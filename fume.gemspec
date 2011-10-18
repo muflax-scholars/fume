@@ -1,5 +1,5 @@
 Gem::Specification.new do |s|
-  s.name = 'fume'
+  s.name = 'futureme'
   s.version = "0.1"
   s.summary     = 'automated task suggester'
   s.description = 'automated task suggester'
