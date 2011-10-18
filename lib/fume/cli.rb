@@ -177,7 +177,7 @@ module Fume
 
     def color_task task
       "%{context} %{task}" % {
-        context: @hl.color("#{task.context}", :yellow),
+        context: @hl.color("@#{task.context}", :yellow),
         task: task.name,
       }
     end
