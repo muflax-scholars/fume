@@ -19,9 +19,8 @@ module Fume
     end
     
     def task name, opts={}
-      return if opts == :pause
-
       t = Task.new(name, self)
+      t.pause if opts == :pause
       @tasks << t
     end
 
@@ -37,8 +36,17 @@ module Fume
     def initialize name, context
       @name = name
       @context = context
+      @paused = false
     end
 
+    def paused?
+      @paused
+    end
+
+    def pause
+      @paused = true
+    end
+    
     def to_s
       "@#{@context.name} #{@name}"
     end

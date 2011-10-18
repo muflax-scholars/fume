@@ -75,6 +75,11 @@ module Fume
     end
 
     def most_urgent limit
+      sort_tasks_by_urgency
+      @urgent_tasks.take limit
+    end
+
+    def sort_tasks_by_urgency
       # cache order for suggestion
       @urgent_tasks = tasks.sort do |a,b|
         a_n = necessary_for(a.context, :week)
@@ -91,10 +96,8 @@ module Fume
           b_n <=> a_n
         end
       end
-
-      @urgent_tasks.take limit
     end
-
+    
     def timetrap cmd
       Timetrap::CLI.parse cmd
       Timetrap::CLI.invoke
@@ -102,7 +105,9 @@ module Fume
 
     def suggest_task
       # just go with most urgent entry
-      @urgent_tasks.nil? ? most_urgent(1)[0] : @urgent_tasks[0]
+      sort_tasks_by_urgency if @urgent_tasks.nil?
+
+      @urgent_tasks.select{|t| not t.paused?}.first
     end
 
     def necessary_for context, time
