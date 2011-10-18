@@ -1,6 +1,6 @@
 desc "open an irb session preloaded with this library"
 task :console do
-  sh "irb -Ilib -rchronic"
+  sh "irb -Ilib -rfume"
 end
 
 desc "build a gem from the gemspec"
