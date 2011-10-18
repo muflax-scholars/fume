@@ -18,7 +18,7 @@ end
 
 desc "install a gem"
 task :install => [:clean, :build] do
-  sh "gem install pkg/fume-*.gem"
+  sh "gem install --no-format-executable pkg/fume-*.gem"
 end
 
 task :default => :install

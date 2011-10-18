@@ -11,6 +11,6 @@ Gem::Specification.new do |s|
   s.add_dependency("muflax-timetrap", ">= 1.7.6")
   s.add_dependency("highline", ">= 1.6.5")
   s.files = `git ls-files`.split("\n")
-  s.bindir = "bin"
-  s.executables = `git ls-files -- bin`.split("\n")
+  s.executables = ["fume"]
+  s.default_executable = "fume"
 end
