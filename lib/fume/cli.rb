@@ -30,7 +30,7 @@ module Fume
         quota        = @fumes.quotas[task.context]
         weight       = task.context.weight
         target       = weight.to_f / @fumes.global_weight
-        repeated_cxt = (i > 0 && @fumes.tasks[i-1].context == task.context)
+        repeated_cxt = (i > 0 && @fumes.tasks[i-1].context.name == task.context.name)
 
         ratios      = {}
         necessaries = {}

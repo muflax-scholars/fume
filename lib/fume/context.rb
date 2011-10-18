@@ -19,6 +19,8 @@ module Fume
     end
     
     def task name, opts={}
+      return if opts == :pause
+
       t = Task.new(name, self)
       @tasks << t
     end
@@ -43,7 +45,7 @@ module Fume
 
     include Comparable
     def <=>(other)
-      if self.context == other.context
+      if self.context.name == other.context.name
         self.name <=> other.name
       else
         self.context.name <=> other.context.name
