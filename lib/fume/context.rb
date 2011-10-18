@@ -6,7 +6,7 @@ module Fume
     def initialize name
       @name = name
       @tasks = []
-      @weight = 1
+      @weight = 0
     end
 
     # stupid hack to make the DSL a bit simpler

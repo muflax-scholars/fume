@@ -62,12 +62,14 @@ module Fume
 
         ratings = @fumes.times.map{|t| "#{ratios[t]}#{necessaries[t]}"}.join ' | '
 
-        puts "%{id} %{target} %{rating} %{context} %{id} #{task.name}" % {
+        puts "%{id} %{target} %{rating} %{context} %{id} %{pause}%{task}" % {
           id: @hl.color("<%02d>" % (i + 1), :magenta),
           context: @hl.color("%#{ctx_length+1}s" % ("@#{task.context}"),
                              repeated_cxt ? :bright_black : :yellow),
           rating: @hl.color("[#{ratings}]", repeated_cxt ? :bright_black : :white),
           target: @hl.color("%3.0f%%" % (target*100), repeated_cxt ? :bright_black : :white),
+          task: task.name,
+          pause: ("*" if task.paused?)
         }
       end
 
@@ -108,9 +110,16 @@ module Fume
       end
     end
 
+    def show_suggestion
+      reload
+      task = @fumes.suggest_task
+      puts
+      puts "Fish spotted: #{color_task(task)}"
+    end
+    
     def question_me
       while true
-        show_todo 1
+        show_suggestion
         
         puts
         print "#{keywordify("suggestion", :green)} "
@@ -157,7 +166,10 @@ module Fume
     end
 
     def color_task task
-      task.to_s
+      "%{context} %{task}" % {
+        context: @hl.color("#{task.context}", :yellow),
+        task: task.name,
+      }
     end
     
     def suggest

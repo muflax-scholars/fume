@@ -106,7 +106,6 @@ module Fume
     def suggest_task
       # just go with most urgent entry
       sort_tasks_by_urgency if @urgent_tasks.nil?
-
       @urgent_tasks.select{|t| not t.paused?}.first
     end
 
