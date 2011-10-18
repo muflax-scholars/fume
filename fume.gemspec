@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = 'futureme'
-  s.version = "0.1"
+  s.version = "0.2"
   s.summary     = 'automated task suggester'
   s.description = 'automated task suggester'
   s.authors  = ["muflax"]
