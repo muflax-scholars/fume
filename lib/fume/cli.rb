@@ -9,6 +9,7 @@ module Fume
                               Fume::Config["fumes"])
       @signal_file = Fume::Config["signal"]
       @fumes = Fume::Fumes.new
+      @last_task = nil
     end
 
     def reload
@@ -150,9 +151,18 @@ module Fume
           show_todo
           next
         when "k"
-          break
+          if Timetrap::Timer.running?
+            # just keep on going
+            break
+          elsif not @last_task.nil?
+            # check in last task
+            work_on @last_task
+          else
+            puts "Memory fault: last task forgotten. Fishing aborted."
+            next
+          end
         when "o"
-          timetrap "out"
+          @fumes.timetrap "out"
           next
         end
         
@@ -217,15 +227,17 @@ module Fume
       @log.write "#{Time.now.strftime("%s")} #{task}"
       
       # extract context the item is in for timetrap
-      timetrap "sheet #{task.context.name}"
+      @fumes.timetrap "sheet #{task.context.name}"
 
       # add an action
       action = @hl.ask("Care to name a specific action? [ENTER to skip]")
       unless action.empty?
-        timetrap "in #{task} - #{action}"
+        @fumes.timetrap "in #{task} - #{action}"
       else
-        timetrap "in #{task}"
+        @fumes.timetrap "in #{task}"
       end
+      
+      @last_task = task
     end
 
     def procrastinate_on task
