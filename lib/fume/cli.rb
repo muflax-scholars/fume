@@ -67,8 +67,10 @@ module Fume
           id: @hl.color("<%02d>" % (i + 1), :magenta),
           context: @hl.color("%#{ctx_length+1}s" % ("@#{task.context}"),
                              repeated_cxt ? :bright_black : :yellow),
-          rating: @hl.color("[#{ratings}]", repeated_cxt ? :bright_black : :white),
-          target: @hl.color("%3.0f%%" % (target*100), repeated_cxt ? :bright_black : :white),
+          rating: @hl.color("[#{ratings}]",
+                            repeated_cxt ? :bright_black : :white),
+          target: @hl.color("%3.0f%%" % (target*100),
+                            repeated_cxt ? :bright_black : :white),
           task: task.name,
           pause: ("*" if task.paused?)
         }
@@ -80,7 +82,17 @@ module Fume
         hours << "%7.1fh" % [@fumes.global_quota[time] / 3600.to_f]
       end
 
-      puts "sum: %3dx [#{hours.join ' | '}]" % @fumes.global_weight
+      weight_color = if @fumes.global_weight > 250
+                       :bright_red
+                     elsif @fumes.global_weight >= 200
+                       :yellow
+                     else
+                       :white
+                     end
+
+      puts "sum: %{weight}h [#{hours.join ' | '}]" % {
+        weight: @hl.color("%3d" % @fumes.global_weight, weight_color)
+      }
     end
 
     def length_of_longest_in(list)
