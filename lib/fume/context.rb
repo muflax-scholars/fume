@@ -34,6 +34,17 @@ module Fume
       @tasks << t
     end
 
+    def read reading_list, args={}
+      buffer = args[:buffer] || 3
+      
+      # schedule first item normally
+      task reading_list[0]
+      # ...and the rest as paused
+      reading_list[1..-1].take(buffer-1).each do |t|
+        task t, :pause
+      end if reading_list.size > 1
+    end
+    
     def to_s
       @name
     end
