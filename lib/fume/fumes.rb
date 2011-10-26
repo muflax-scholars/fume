@@ -1,6 +1,6 @@
 module Fume
   class Fumes
-    attr_reader :contexts, :quotas
+    attr_reader :contexts, :quotas, :urgent_tasks
     
     def initialize
       # initialize timetrap
@@ -74,11 +74,6 @@ module Fume
       @quotas[:all]
     end
 
-    def most_urgent limit
-      sort_tasks_by_urgency
-      @urgent_tasks.take limit
-    end
-
     def sort_tasks_by_urgency
       # cache order for suggestion
       @urgent_tasks = tasks.sort do |a,b|
@@ -105,7 +100,6 @@ module Fume
 
     def suggest_task
       # just go with most urgent entry
-      sort_tasks_by_urgency if @urgent_tasks.nil?
       @urgent_tasks.select{|t| not t.paused?}.first
     end
 

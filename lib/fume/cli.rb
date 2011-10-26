@@ -15,6 +15,7 @@ module Fume
     def reload
       @fumes.parse(@fumes_file)
       @fumes.update_quotas
+      @fumes.sort_tasks_by_urgency
     end
     
     def show_todo limit=0
@@ -23,7 +24,7 @@ module Fume
       # let's grab all the necessary data
       reload
       limit      = @fumes.tasks.size if limit <= 0
-      tasks      = @fumes.most_urgent(limit).sort
+      tasks      = @fumes.urgent_tasks.take(limit).sort
       ctx_length = length_of_longest_in tasks.map{|t| t.context}
       
       # let's make some sausage
