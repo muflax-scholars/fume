@@ -30,7 +30,7 @@ module Fume
       {
         today: "-s '24 hours ago'",
         week:  "-s '7 days ago'",
-        month: "-s 'first day this month'",
+        month: "-s '30 days ago'",
         total: ""
       }
     end
