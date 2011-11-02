@@ -1,0 +1,68 @@
+#!/usr/bin/env ruby
+
+# Simple script to get old fume data and send it to beeminder. Adjust data. Put
+# it in a daily cron job. Pay for dreeves' hookers.
+
+debug = false
+
+begin
+  require 'fume'
+rescue LoadError
+  if File.symlink? __FILE__
+    require File.dirname(File.readlink(__FILE__)) + '/../lib/fume'
+  else
+    require File.dirname(__FILE__) + '/../lib/fume'
+  end
+end
+
+# get all days we haven't reported yet
+bee_log = File.join(Fume::Config["fume_dir"], Fume::Config["beeminder"])
+yaml = YAML::load(File.open(bee_log))
+dates = []
+yaml["start"].to_date.upto(Chronic.parse("yesterday").to_date) do |date|
+  if yaml["reported"].include? date
+    next
+  else
+    dates << date
+  end
+end
+
+if dates.empty?
+  puts "nothing to do..." if debug
+  exit
+end
+puts "reporting #{dates.size} day(s)..." if debug
+
+# load fume data
+fume = Fume::CLI.new
+puts "loading fume data..." if debug
+fmt = "%Y-%m-%d"
+fume.load_data *dates.map{|d| d.strftime(fmt)}
+
+# build mail
+body = ""
+dates.each do |date|
+  score = "%0.1f" % (fume.fumes.global_quota[date.strftime(fmt).to_sym] / (60.0*60.0))
+  text  = "automated fume update"
+  body << "#{date.strftime("%d")} #{score} \"#{text}\"\n"
+  yaml["reported"][date] = true # date done
+end
+
+subject = "#{yaml["account"]}/#{yaml["goal"]}" # on #{date.strftime("%m/%d")}"
+
+# send mail
+if debug
+  puts subject, body
+else
+  require 'pony'
+  Pony.mail(:to      => "bot@beeminder.com",
+            :from    => yaml["mail"],
+            :subject => subject,
+            :body    => body,
+            :via     => :smtp)
+end
+
+# save data
+File.open(bee_log, "w") do |f|
+  YAML.dump(yaml, f)
+end unless debug

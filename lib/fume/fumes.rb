@@ -28,24 +28,35 @@ module Fume
 
     def intervals
       {
-        today: "-s 'today'",
-        week:  "-s '7 days ago'",
-        month: "-s '30 days ago'",
-        total: ""
+        today:     "-s today",
+        week:      "-s '7 days ago'",
+        month:     "-s '30 days ago'",
+        total:     "",
       }
     end
 
     def times
-      intervals.keys.map(&:to_sym)
+      intervals.keys
     end
     
-    def update_quotas
+    def update_quotas *filter_times
       @quotas = {}
+
+      if filter_times.empty?
+        # use normal intervals
+        update_intervals = intervals
+      else
+        # construct new intervals
+        update_intervals = {}
+        filter_times.each do |time|
+          update_intervals[time.to_sym] = "-s #{time} -e #{time}"
+        end
+      end
 
       # quota for individual contexts
       @contexts.each do |context|
         quota = {}
-        intervals.each do |time, opt|
+        update_intervals.each do |time, opt|
           Timetrap::CLI.parse "#{context} #{opt}"
           quota[time] =
             begin
@@ -60,7 +71,7 @@ module Fume
 
       # global quota
       global_quota = {}
-      times.each do |time|
+      update_intervals.keys.each do |time|
         global_quota[time] = @quotas.values.reduce(0){|s,v| s+v[time]}
       end
       @quotas[:all] = global_quota
