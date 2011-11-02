@@ -1,7 +1,9 @@
 module Fume
   class CLI
-    def initialize time
-      @time = time || (10..20)
+    attr_reader :fumes
+    
+    def initialize time=(10..20)
+      @time = time
       @hl = HighLine.new
       @log = File.open(File.join(Fume::Config["fume_dir"],
                                  Fume::Config["log"]), "a")
