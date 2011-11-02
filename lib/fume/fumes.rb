@@ -28,7 +28,7 @@ module Fume
 
     def intervals
       {
-        today: "-s '24 hours ago'",
+        today: "-s 'today'",
         week:  "-s '7 days ago'",
         month: "-s '30 days ago'",
         total: ""
