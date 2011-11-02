@@ -18,10 +18,9 @@ module Fume
     def add_context ctx
       @contexts << ctx
     end
-    
+
     def tasks
       tasks = []
-
       # sorted by contexts, then names
       @contexts.map(&:tasks).flatten.sort
     end
@@ -35,6 +34,12 @@ module Fume
       }
     end
 
+    def contexts_on date
+      @contexts.select do |c|
+        @quotas[c][date].nonzero?
+      end
+    end
+    
     def times
       intervals.keys
     end

@@ -42,8 +42,12 @@ fume.load_data *dates.map{|d| d.strftime(fmt)}
 # build mail
 body = ""
 dates.each do |date|
-  score = "%0.1f" % (fume.fumes.global_quota[date.strftime(fmt).to_sym] / (60.0*60.0))
-  text  = "automated fume update"
+  date_s = date.strftime(fmt).to_sym
+  score = "%0.1f" % (fume.fumes.global_quota[date_s] / (60.0*60.0))
+  contexts = fume.fumes.contexts_on(date_s)
+  text  = "automatic update, contexts: %{context}" % {
+    context: contexts.empty? ? "none" : contexts.map(&:name).sort.join(", ")
+  }
   body << "#{date.strftime("%d")} #{score} \"#{text}\"\n"
   yaml["reported"][date] = true # date done
 end
