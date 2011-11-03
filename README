@@ -1,6 +1,31 @@
 fume aka future_me, a birthline / goal suggester
 
+Features
+========
+
+- No brains required!
+- Beeminder integration
+
+Requirements
+============
+
+- mplayer
+- a not too stupid shell
+- ruby-1.9
+- highline >= 1.6.5 - [https://github.com/JEG2/highline]
+- muflax-timetrap - [https://github.com/muflax/timetrap]
+- (optional) muflax-chronic - https://github.com/muflax/chronic]
+
+Installation
+============
+
+TODO
+
 TODO
 ====
 
-Write README. :)
+- Write README. :)
+- explain config
+- put in on rubygems
+- fix midnight bug
+- use beeminder API
