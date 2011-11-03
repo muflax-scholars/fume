@@ -1,5 +1,5 @@
 require "highline"
-require "timetrap"
+require "fumetrap"
 require "yaml"
 
 require "fume/config"

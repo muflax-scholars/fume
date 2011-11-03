@@ -3,8 +3,8 @@ module Fume
     attr_reader :contexts, :quotas, :urgent_tasks
     
     def initialize
-      # initialize timetrap
-      Timetrap::CLI.args = Getopt::Declare.new("#{Timetrap::CLI::USAGE}")
+      # initialize fumetrap
+      Fumetrap::CLI.args = Getopt::Declare.new("#{Fumetrap::CLI::USAGE}")
     end
 
     def parse file
@@ -62,10 +62,10 @@ module Fume
       @contexts.each do |context|
         quota = {}
         update_intervals.each do |time, opt|
-          Timetrap::CLI.parse "#{context} #{opt}"
+          Fumetrap::CLI.parse "#{context} #{opt}"
           quota[time] =
             begin
-              entries = Timetrap::CLI.selected_entries
+              entries = Fumetrap::CLI.selected_entries
               entries.inject(0) {|m, e| m += e.duration}
             rescue
               0
@@ -109,9 +109,9 @@ module Fume
       end
     end
     
-    def timetrap cmd
-      Timetrap::CLI.parse cmd
-      Timetrap::CLI.invoke
+    def fumetrap cmd
+      Fumetrap::CLI.parse cmd
+      Fumetrap::CLI.invoke
     end
 
     def suggest_task

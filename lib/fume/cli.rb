@@ -171,7 +171,7 @@ module Fume
           show_todo
           next
         when "k"
-          if Timetrap::Timer.running?
+          if Fumetrap::Timer.running?
             # just keep on going
             break
           elsif not @last_task.nil?
@@ -182,7 +182,7 @@ module Fume
             next
           end
         when "o"
-          @fumes.timetrap "out"
+          @fumes.fumetrap "out"
           next
         end
         
@@ -239,22 +239,22 @@ module Fume
 
     def work_on task
       # first check out
-      if Timetrap::Timer.running?
-        @fumes.timetrap "out"
+      if Fumetrap::Timer.running?
+        @fumes.fumetrap "out"
       end
 
       puts "Working on #{color_task(task)}..."
       @log.write "#{Time.now.strftime("%s")} #{task}"
       
-      # extract context the item is in for timetrap
-      @fumes.timetrap "sheet #{task.context.name}"
+      # extract context the item is in for fumetrap
+      @fumes.fumetrap "sheet #{task.context.name}"
 
       # add an action
       action = @hl.ask("Care to name a specific action? [ENTER to skip]")
       unless action.empty?
-        @fumes.timetrap "in #{task} - #{action}"
+        @fumes.fumetrap "in #{task} - #{action}"
       else
-        @fumes.timetrap "in #{task}"
+        @fumes.fumetrap "in #{task}"
       end
       
       @last_task = task

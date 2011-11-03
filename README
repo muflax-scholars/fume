@@ -13,7 +13,7 @@ Requirements
 - a not too stupid shell
 - ruby-1.9
 - highline >= 1.6.5 - [https://github.com/JEG2/highline]
-- muflax-timetrap - [https://github.com/muflax/timetrap]
+- fumetrap - [https://github.com/muflax/fumetrap]
 - (optional) muflax-chronic - https://github.com/muflax/chronic]
 
 Installation
