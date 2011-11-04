@@ -16,7 +16,7 @@ module Fume
 
     def reload
       load_file
-      @fumes.update_quotas *filter_times
+      @fumes.update_quotas
       @fumes.sort_tasks_by_urgency
     end
 
