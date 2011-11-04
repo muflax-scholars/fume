@@ -15,16 +15,15 @@ module Fume
     end
 
     def reload
-      load_data
+      load_file
+      @fumes.update_quotas *filter_times
       @fumes.sort_tasks_by_urgency
     end
 
-    # smaller version of reload
-    def load_data *filter_times
+    def load_file
       @fumes.parse(@fumes_file)
-      @fumes.update_quotas *filter_times
     end
-
+    
     def show_todo limit=0
       puts "  -> Incoming transmission! <-"
 

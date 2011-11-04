@@ -43,20 +43,22 @@ module Fume
     def times
       intervals.keys
     end
-    
-    def update_quotas *filter_times
-      @quotas = {}
 
-      if filter_times.empty?
-        # use normal intervals
-        update_intervals = intervals
-      else
-        # construct new intervals
-        update_intervals = {}
-        filter_times.each do |time|
-          update_intervals[time.to_sym] = "-s #{time} -e #{time}"
-        end
+    def filter_intervals *filter_days
+      # construct new intervals
+      update_intervals = {}
+      filter_times.each do |time|
+        update_intervals[time.to_sym] = "-s #{time} -e #{time}"
       end
+      update_intervals
+    end
+
+    def filter_since day
+      {day: "-s #{day}"}
+    end
+    
+    def update_quotas update_intervals=intervals
+      @quotas = {}
 
       # quota for individual contexts
       @contexts.each do |context|
