@@ -6,6 +6,7 @@
 debug = false
 send  = true
 
+require "chronic"
 require "set"
 
 begin
@@ -21,11 +22,10 @@ end
 # get all days we haven't reported yet
 bee_log = File.join(Fume::Config["fume_dir"], Fume::Config["beeminder"])
 yaml = YAML::load(File.open(bee_log))
-fmt = "%Y-%m-%d"
+Fumetrap::CLI.args = Getopt::Declare.new("#{Fumetrap::CLI::USAGE}")
+Fumetrap::CLI.parse "all -s #{yaml["start"]}"
 
 puts "getting unreported entries..." if debug
-Fumetrap::CLI.args = Getopt::Declare.new("#{Fumetrap::CLI::USAGE}")
-Fumetrap::CLI.parse "all -s #{yaml["start"]} -e '1 hour ago'"
 unreps = Fumetrap::CLI.unreported_entries
 puts "found: #{unreps.count}" if debug
 
@@ -36,6 +36,7 @@ end
 
 # load fume data
 puts "loading fume data..." if debug
+fmt  = "%Y-%m-%d"
 fume = Fume::CLI.new
 fume.load_file
 fume.fumes.update_quotas(fume.fumes.filter_since yaml["start"].strftime(fmt))
@@ -44,9 +45,11 @@ contexts = Set.new(fume.fumes.contexts.map(&:name))
 # report each entry
 done = []
 body = ""
+margin = Chronic.parse("1 hour ago")
 unreps.each do |entry|
-  # check if it's in a valid context
+  # check if it's in a valid context and not too new
   next if not contexts.include? entry.sheet
+  next if entry.end >= margin
 
   # build data point
   date = entry.start
@@ -56,6 +59,11 @@ unreps.each do |entry|
 
   # mark it as done later
   done << entry
+end
+
+if done.empty?
+  puts "nothing to update (yet)..." if debug
+  exit
 end
 
 # send data
