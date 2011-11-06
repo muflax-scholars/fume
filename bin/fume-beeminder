@@ -86,7 +86,7 @@ else
     http.start do |http|
       req = Net::HTTP::Post.new(url.path)
       req.set_form_data({"datapoints_text" => body,
-                          "origin" => yaml["account"]})
+                          "origin" => "web"})
       res = http.request(req)
     end
   rescue StandardError, Timeout::Error
