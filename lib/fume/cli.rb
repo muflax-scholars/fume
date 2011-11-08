@@ -70,13 +70,15 @@ module Fume
 
         ratings = @fumes.times.map{|t| "#{ratios[t]}#{necessaries[t]}"}.join ' | '
 
-        puts "%{id} %{target} %{rating} %{context} %{id} %{pause}%{task}" % {
+        puts "%{id} %{weight} %{rating} %{context} %{id} %{pause}%{task}" % {
           id: @hl.color("<%02d>" % (i + 1), :magenta),
           context: @hl.color("%#{ctx_length+1}s" % ("@#{task.context}"),
                              repeated_cxt ? :bright_black : :yellow),
           rating: @hl.color("[#{ratings}]",
                             repeated_cxt ? :bright_black : :white),
           target: @hl.color("%3.0f%%" % (target*100),
+                            repeated_cxt ? :bright_black : :white),
+          weight: @hl.color("%3dh" % (weight),
                             repeated_cxt ? :bright_black : :white),
           task: task.name,
           pause: ("*" if task.paused?)
