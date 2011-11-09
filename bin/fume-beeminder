@@ -87,7 +87,7 @@ else
       req = Net::HTTP::Post.new(url.path)
       req.set_form_data({"datapoints_text" => body,
                           "origin" => "#{yaml["account"]}_api",
-                          "sendmail" => "false"})
+                          "sendmail" => false})
       res = http.request(req)
     end
   rescue StandardError, Timeout::Error
