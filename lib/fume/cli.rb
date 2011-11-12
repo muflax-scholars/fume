@@ -12,6 +12,7 @@ module Fume
       @signal_file = Fume::Config["signal"]
       @fumes = Fume::Fumes.new
       @last_task = nil
+      @last_note = ""
     end
 
     def reload
@@ -251,14 +252,21 @@ module Fume
       @fumes.fumetrap "sheet #{task.context.name}"
 
       # add an action
-      action = @hl.ask("Care to name a specific action? [ENTER to skip]")
-      unless action.empty?
-        @fumes.fumetrap "in #{task} - #{action}"
+      action = @hl.ask("Care to name a specific action? [ENTER to skip, - for last task]")
+      if action == "-"
+        note = last_note
+      else
+        note = action
+      end
+        
+      unless note.empty?
+        @fumes.fumetrap "in #{task} - #{note}"
       else
         @fumes.fumetrap "in #{task}"
       end
       
       @last_task = task
+      @last_note = note
     end
 
     def procrastinate_on task
