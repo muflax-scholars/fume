@@ -8,7 +8,17 @@ send  = true
 
 require "chronic"
 require "set"
+require "optparse"
 
+options = {}
+OptionParser.new do |opts|
+  opts.banner = "usage: fume-beeminder [-f]"
+
+  opts.on("-f", "--force", "force update") do |v|
+    options[:force] = v
+  end
+end.parse!
+  
 begin
   require 'fume'
 rescue LoadError
@@ -49,7 +59,7 @@ margin = Chronic.parse("1 hour ago")
 unreps.each do |entry|
   # check if it's in a valid context and not too new
   next if not contexts.include? entry.sheet
-  next if entry.end >= margin
+  next if entry.end >= margin and not options[:force]
 
   # build data point
   date = entry.start
