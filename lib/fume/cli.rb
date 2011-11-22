@@ -52,6 +52,8 @@ module Fume
           diff = ratio / target
           color = if repeated_cxt
                     :bright_black
+                  elsif target.zero?
+                    :white
                   elsif diff > 0.8
                     :green
                   elsif diff > 0.5
