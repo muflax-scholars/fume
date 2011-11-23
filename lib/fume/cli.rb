@@ -256,7 +256,7 @@ module Fume
       # add an action
       action = @hl.ask("Care to name a specific action? [ENTER to skip, - for last task]")
       if action == "-"
-        note = last_note
+        note = @last_note
       else
         note = action
       end
