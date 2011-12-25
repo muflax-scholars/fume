@@ -157,7 +157,7 @@ module Fume
         puts
         input = @hl.ask("What do you want to do next? ") do |q|
           q.in = %w{s c r k o q l}
-          q.character = true
+          q.limit = 1
         end
         
         case input
@@ -221,7 +221,7 @@ module Fume
         print "#{keywordify("nope", :red)}"
         input = @hl.ask(" ") do |q|
           q.in = %w{s n}
-          q.character = true
+          q.limit = 1
         end
         
         case input
