@@ -306,7 +306,8 @@ module Fume
       @fumes.fumetrap "sheet #{task.context.name}"
 
       # add an action
-      action = @hl.ask("Care to name a specific action? [ENTER to skip, - for last task]")
+      last = @last_note.empty? ? "n/a" : @last_note
+      action = @hl.ask("Care to name a specific action? [ENTER to skip, - for last task (#{last})]")
       if action == "-"
         note = @last_note
       else
