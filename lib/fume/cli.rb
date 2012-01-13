@@ -11,11 +11,14 @@ module Fume
                               Fume::Config["fumes"])
       @signal_file = Fume::Config["signal"]
       @fumes = Fume::Fumes.new
+
+      # TODO this should be cached somewhere
       @last_task = nil
       @last_note = ""
       @last_shown_tasks = nil
-
-      @commands = []
+      @last_modified = 0
+      
+      @commands = {}
       init_commands
     end
 
@@ -28,10 +31,18 @@ module Fume
         choose
       end
 
+      add_command "random" do
+        choose_randomly
+      end
+      
       add_command "reload" do
         system "clear"
       end
 
+      add_command "back" do
+        raise Interrupt
+      end
+      
       add_command "list tasks" do
         show_tasks :tasks
       end
@@ -64,7 +75,7 @@ module Fume
 
     def add_command name, params={}, &block
       cmd = {
-        name: name,
+        name: name.gsub(/\((\w)\)/, '\1'),
         # look for (c)har, otherwise use first char as keyword
         keyword: if m = name.match(/(.*) \((\w)\) (.*)/x)
                    m[2]
@@ -74,17 +85,29 @@ module Fume
         color: params[:color] || :green,
         block: block,
       }
-      @commands << cmd
+      @commands[cmd[:name].gsub(/ /, "_").to_sym] = cmd
     end
     
     def reload
-      load_file
-      @fumes.update_quotas
-      @fumes.sort_tasks_by_urgency
+      if file_updated?
+        load_file
+        @fumes.update_quotas
+        @fumes.sort_contexts_by_urgency
+      end
     end
 
     def load_file
       @fumes.parse(@fumes_file)
+    end
+
+    def file_updated?
+      t = File.ctime(@fumes_file).to_i
+      if t > @last_modified
+        @last_modified = t
+        return true
+      else
+        return false
+      end
     end
     
     def show_tasks filter=:all
@@ -95,17 +118,15 @@ module Fume
     def show_todo filter=:all
       puts "  -> Incoming transmission! <-"
 
-      # let's grab all the necessary data
-      reload
-      
       # find all tasks and apply filter
       tasks =
-        case filter
-        when :tasks
+        if filter == :tasks
           # only contexts that have positive weight
-          @fumes.urgent_tasks.select {|t| t.context.weight > 0}
-        else
           @fumes.urgent_tasks
+        elsif filter.is_a? Context
+          filter.tasks
+        else
+          @fumes.tasks
         end.sort
       @last_shown_tasks = tasks # remember tasks for choose command
 
@@ -214,28 +235,40 @@ module Fume
       system "mplayer -really-quiet #{@signal_file} &"
       puts "#{@hl.color("-> BZZZ <-".center(30), :red)}\a"
     end
-    
-    def show_suggestion
-      reload
-      task = @fumes.suggest_task
-      puts
-      puts "Fish spotted: #{color_task(task)}"
-    end
-    
-    def question_me
-      show_suggestion
-      
-      puts
-      puts @commands.map{|cmd| "#{keywordify(cmd[:name], cmd[:color])}"}.join(" | ")
 
-      input = @hl.ask("What do you want to do next? ") do |q|
-        q.in = @commands.map {|cmd| cmd[:keyword]}
+    def exec_command prompt, desc
+      commands = prompt.map{|c| @commands[c]}
+
+      puts
+      puts commands.map{|cmd| "#{keywordify(cmd[:name], cmd[:color])}"}.join(" | ")
+
+      input = @hl.ask("#{desc} ") do |q|
+        q.in = commands.map {|cmd| cmd[:keyword]}
         q.limit = 1
       end
 
       # execute command
-      cmd = @commands.find {|cmd| cmd[:keyword] == input}
+      cmd = commands.find {|cmd| cmd[:keyword] == input}
       instance_eval(&cmd[:block])
+    end
+    
+    def question_me
+      # grab new data
+      reload
+      
+      show_suggestion
+
+      prompt = [
+                :suggestion,
+                :choose,
+                :reload,
+                :list_tasks,
+                :list_all,
+                :keep_going,
+                :out,
+                :quit,
+               ]
+      exec_command prompt, "What do you want to do next?"
     end
 
     def keywordify string, color
@@ -253,46 +286,63 @@ module Fume
         task: task.name,
       }
     end
-    
-    def suggest
-      # pick tasks until a suggestion works
-      while true
-        task = @fumes.suggest_task
 
-        if task.nil?
+    def color_context ctx
+      "%{context}" % {
+        context: @hl.color("@#{ctx}", :yellow),
+      }
+    end
+
+    def suggest
+      # pick a context to work on, then suggest tasks
+      while true
+        ctx = @fumes.suggest_context
+
+        if ctx.nil?
           puts "Nothing to do. Sorry."
           return
         end
-        
-        puts "What about #{color_task(task)}?"
-        print "#{keywordify("sure", :green)} "
-        print "#{keywordify("nope", :red)}"
-        input = @hl.ask(" ") do |q|
-          q.in = %w{s n}
-          q.limit = 1
-        end
-        
-        case input
-        when "s"
-          work_on task
-          return
-        when "n"
-          procrastinate_on task
-        end
+
+        puts "Urgency detection module suggests #{color_context(ctx)}."
+        show_todo ctx
+
+        prompt = [
+                  :choose,
+                  :random,
+                  :back,
+                 ]
+        exec_command prompt, "What task do you want?"
       end
     end
 
+    def show_suggestion
+      ctx = @fumes.suggest_context
+      puts
+      puts "Fish spotted: #{color_context(ctx)}"
+    end
     
     def choose
       if @last_shown_tasks.nil? # have never shown tasks, so do it now
         show_tasks :tasks
       end
       
-      id = @hl.ask("What item do you want? ", Integer) {|q| q.in = 1..@last_shown_tasks.size}
+      id = @hl.ask("What item do you want? ", Integer) do |q|
+        q.in = 1..@last_shown_tasks.size
+      end
+      
       task = @last_shown_tasks[id - 1]
       work_on task
     end
 
+    def choose_randomly
+      if @last_shown_tasks.nil? # have never shown tasks, so do it now
+        show_tasks :tasks
+      end
+
+      task = @last_shown_tasks.sample
+      work_on task
+    end
+    
     def work_on task
       # first check out
       if Fumetrap::Timer.running?
@@ -325,11 +375,6 @@ module Fume
 
       # wait before next command
       recharge
-    end
-
-    def procrastinate_on task
-      puts "Transmission error detected. Requesting retry..."
-      # system "#{FUMETXT} append #{id} @broken"
     end
   end
 end

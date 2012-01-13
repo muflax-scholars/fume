@@ -1,6 +1,6 @@
 module Fume
   class Fumes
-    attr_reader :contexts, :quotas, :urgent_tasks
+    attr_reader :contexts, :quotas, :urgent_contexts
     
     def initialize
       # initialize fumetrap
@@ -20,9 +20,12 @@ module Fume
     end
 
     def tasks
-      tasks = []
       # sorted by contexts, then names
-      @contexts.map(&:tasks).flatten.sort
+      @contexts.map(&:tasks).flatten
+    end
+
+    def urgent_tasks
+      @contexts.select{|ctx| ctx.weight > 0}.map(&:tasks).flatten
     end
 
     def intervals
@@ -92,18 +95,18 @@ module Fume
       @quotas[:all]
     end
 
-    def sort_tasks_by_urgency
+    def sort_contexts_by_urgency
       # cache order for suggestion
-      @urgent_tasks = tasks.sort do |a,b|
-        a_n = necessary_for(a.context, :week)
-        b_n = necessary_for(b.context, :week)
+      @urgent_contexts = contexts.sort do |a,b|
+        a_n = necessary_for(a, :week)
+        b_n = necessary_for(b, :week)
 
         # the more hours left, the more important
         if a_n == b_n
-          if b.context.weight == a.context.weight
+          if b.weight == a.weight
             rand <=> rand
           else
-            b.context.weight <=> b.context.weight
+            b.weight <=> b.weight
           end
         else
           b_n <=> a_n
@@ -116,9 +119,9 @@ module Fume
       Fumetrap::CLI.invoke
     end
 
-    def suggest_task
+    def suggest_context
       # just go with most urgent entry
-      @urgent_tasks.select{|t| not t.paused?}.first
+      @urgent_contexts.first
     end
 
     def necessary_for context, time
