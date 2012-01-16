@@ -94,7 +94,7 @@ module Fume
     end
     
     def reload
-      if file_updated?
+      if files_updated?
         load_file
         @fumes.update_quotas
         @fumes.sort_contexts_by_urgency
@@ -105,8 +105,12 @@ module Fume
       @fumes.parse(@fumes_file)
     end
 
-    def file_updated?
-      t = File.ctime(@fumes_file).to_i
+    def files_updated?
+      t = [
+           File.ctime(@fumes_file),
+           File.ctime(Fumetrap::Config["database_file"]),
+          ].map(&:to_i).max
+      
       if t > @last_modified
         @last_modified = t
         return true
@@ -123,6 +127,9 @@ module Fume
     def show_todo filter=:all
       puts "  -> Incoming transmission! <-"
 
+      # grab new data
+      reload
+      
       # find all tasks and apply filter
       tasks =
         if filter == :tasks
@@ -258,9 +265,6 @@ module Fume
     end
     
     def question_me
-      # grab new data
-      reload
-      
       show_suggestion
 
       prompt = [
@@ -322,6 +326,9 @@ module Fume
     end
 
     def show_suggestion
+      # grab new data
+      reload
+
       ctx = @fumes.suggest_context
       puts
       puts "Fish spotted: #{color_context(ctx)}"
