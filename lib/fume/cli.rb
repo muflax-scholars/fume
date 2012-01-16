@@ -39,6 +39,11 @@ module Fume
         system "clear"
       end
 
+      add_command "upload" do
+        print "Contacting HQ..."
+        system "fume-beeminder -f" and puts " done."
+      end
+
       add_command "back" do
         raise Interrupt
       end
@@ -75,7 +80,7 @@ module Fume
 
     def add_command name, params={}, &block
       cmd = {
-        name: name.gsub(/\((\w)\)/, '\1'),
+        name: name,
         # look for (c)har, otherwise use first char as keyword
         keyword: if m = name.match(/(.*) \((\w)\) (.*)/x)
                    m[2]
@@ -85,7 +90,7 @@ module Fume
         color: params[:color] || :green,
         block: block,
       }
-      @commands[cmd[:name].gsub(/ /, "_").to_sym] = cmd
+      @commands[name.gsub(/\((\w)\)/, '\1').gsub(/ /, "_").to_sym] = cmd
     end
     
     def reload
@@ -266,6 +271,7 @@ module Fume
                 :list_all,
                 :keep_going,
                 :out,
+                :upload,
                 :quit,
                ]
       exec_command prompt, "What do you want to do next?"
