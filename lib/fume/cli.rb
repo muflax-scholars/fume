@@ -305,24 +305,22 @@ module Fume
 
     def suggest
       # pick a context to work on, then suggest tasks
-      while true
-        ctx = @fumes.suggest_context
+      ctx = @fumes.suggest_context
 
-        if ctx.nil?
-          puts "Nothing to do. Sorry."
-          return
-        end
-
-        puts "Urgency detection module suggests #{color_context(ctx)}."
-        show_todo ctx
-
-        prompt = [
-                  :choose,
-                  :random,
-                  :back,
-                 ]
-        exec_command prompt, "What task do you want?"
+      if ctx.nil?
+        puts "Nothing to do. Sorry."
+        return
       end
+
+      puts "Urgency detection module suggests #{color_context(ctx)}."
+      show_todo ctx
+
+      prompt = [
+                :choose,
+                :random,
+                :back,
+               ]
+      exec_command prompt, "What task do you want?"
     end
 
     def show_suggestion
