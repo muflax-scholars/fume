@@ -175,7 +175,7 @@ module Fume
 
           # How many hours do I have to add to make the target?
           necessary = @fumes.necessary_for(task.context, time)
-          necessaries[time] = @hl.color((necessary.abs < 10 ?
+          necessaries[time] = @hl.color((necessary.abs < 9.96 ? # rounded to 10.0
                                          "%+4.1f" % necessary :
                                          "%+4.0f" % necessary),
                                         repeated_cxt ? :bright_black : :white)
