@@ -24,8 +24,12 @@ module Fume
       @contexts.map(&:tasks).flatten
     end
 
+    def urgent_contexts
+      @contexts.select{|ctx| ctx.weight > 0}
+    end
+    
     def urgent_tasks
-      @contexts.select{|ctx| ctx.weight > 0}.map(&:tasks).flatten
+      urgent_contexts.map(&:tasks).flatten
     end
 
     def intervals
@@ -129,10 +133,59 @@ module Fume
       weight = context.weight
       target = weight.to_f / global_weight
 
+      needed_to_balance(quota[time], target, global_quota[time])
+    end
+
+    def needed_to_balance time, target, total
       # formula: r = q / g =?= t
       #       => q+c / g+c = t
       #       => c = (q - (g*t)) / (t-1) [thanks Wolfram Alpha!]
-      (quota[time] - (target * global_quota[time])) / ((target-1)) / 3600.0
+      (time - (target * total)) / ((target-1))
+    end
+    
+    # calculate how unbalanced the contexts are
+    def total_unbalance time
+      # We check how many hours *total* we would have to invest to balance all
+      # contexts, assuming efficient distribution of time.
+
+      # Get all contexts that are over-represented.
+      queue = urgent_contexts.select{|ctx| necessary_for(ctx, time) < 0}
+
+      # Figure out how much total time we have to add so as to balance each
+      # context.
+      total = global_quota[time]
+
+      until queue.empty?
+        ctx = queue.pop
+        quota = quotas[ctx][time]
+        target = ctx.weight.to_f / global_weight
+
+        # Check we are still unbalanced.
+        lacking = needed_to_balance(quota, target, total)
+        next if lacking >= 0
+
+        # Pretend the chosen context were already balanced. What total value of
+        # time would we have invested? To prevent unbalance escalation, we only
+        # try to get within a factor of 2 of the ideal target weight.
+        new_total = quota / [target * 2, 1.0].min
+        total = [new_total, total].max
+      end
+      
+      # Now that we know the new total we must strive for, calculate how much
+      # time we have to invest to balance each goal.
+      unbalance = urgent_contexts.inject(0) do |sum, ctx|
+        target = ctx.weight.to_f / global_weight
+        ideal  = total * target
+        actual = quotas[ctx][time]
+
+        # don't count slightly over-represented goals
+        diff = [(ideal - actual), 0].max
+
+        sum + diff
+      end
+
+      # TODO Normalize?
+      unbalance
     end
   end
 end

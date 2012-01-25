@@ -174,7 +174,7 @@ module Fume
           ratios[time] = @hl.color("%3.0f%%" % [ratio * 100], color)
 
           # How many hours do I have to add to make the target?
-          necessary = @fumes.necessary_for(task.context, time)
+          necessary = @fumes.necessary_for(task.context, time) / 3600.0
           necessaries[time] = @hl.color((necessary.abs < 9.96 ? # rounded to 10.0
                                          "%+4.1f" % necessary :
                                          "%+4.0f" % necessary),
@@ -200,8 +200,10 @@ module Fume
 
       # summary
       hours = []
+      unbalance = []
       @fumes.times.each do |time|
-        hours << "%7.1fh" % [@fumes.global_quota[time] / 3600.to_f]
+        hours << "%7.1fh" % [@fumes.global_quota[time] / 3600.0]
+        unbalance << "%7.1fh" % [@fumes.total_unbalance(time) / 3600.0]
       end
 
       weight_color = if @fumes.global_weight > 250
@@ -213,8 +215,9 @@ module Fume
                      end
 
       puts "sum: %{weight}h [#{hours.join ' | '}]" % {
-        weight: @hl.color("%3d" % @fumes.global_weight, weight_color)
+        weight: @hl.color("%3d" % @fumes.global_weight, weight_color),
       }
+      puts "balance:  [#{unbalance.join ' | '}]"
     end
 
     def length_of_longest_in(list)
