@@ -31,14 +31,14 @@ module Fume
         choose
       end
 
+      add_command "or(w)ellize" do
+        orwellize
+      end
+
       add_command "random" do
         choose_randomly
       end
       
-      add_command "reload" do
-        system "clear"
-      end
-
       add_command "upload" do
         print "Contacting HQ..."
         system "fume-beeminder -f" and puts " done."
@@ -69,7 +69,7 @@ module Fume
         end
       end
 
-      add_command "out" do
+      add_command "check (o)ut" do
         @fumes.fumetrap "out"
       end
 
@@ -273,12 +273,12 @@ module Fume
       prompt = [
                 :suggestion,
                 :choose,
-                :reload,
                 :list_tasks,
                 :list_all,
                 :keep_going,
-                :out,
+                :check_out,
                 :upload,
+                :orwellize,
                 :quit,
                ]
       exec_command prompt, "What do you want to do next?"
@@ -348,6 +348,21 @@ module Fume
       work_on task
     end
 
+    # Change the starting time of a running task.
+    def orwellize
+      if Fumetrap::Timer.running?
+        time = @hl.ask("When did you really start? ", String) do |q|
+          q.readline = true
+        end
+
+        unless time.empty?
+          @fumes.fumetrap "edit -s '#{time}'"
+        end
+      else
+        puts "No running task; please use fumetrap."
+      end
+    end
+    
     def choose_randomly
       if @last_shown_tasks.nil? # have never shown tasks, so do it now
         show_tasks :tasks
@@ -370,10 +385,19 @@ module Fume
       @fumes.fumetrap "sheet #{task.context.name}"
 
       # add an action
+      note = ""
       last = @last_note.empty? ? "n/a" : @last_note
-      action = @hl.ask("Care to name a specific action? [ENTER to skip, - for last task (#{last})]")
-      if action == "-"
+      action = @hl.ask("Care to name a specific action? [ENTER to skip, - for last task (#{last}), ^ to overwrite task]")
+      
+      case action
+      when "-"
         note = @last_note
+      when "^"
+        # create dummy task
+        desc = @hl.ask("What are you doing? [ENTER to skip]")
+        dummy = Task.new(desc, task.context)
+        dummy.pause
+        task = dummy
       else
         note = action
       end
