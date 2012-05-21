@@ -25,7 +25,7 @@ class Numeric
     self / 60.0
   end
   alias :minute :minutes
-  alias :min    :minutes
+  # alias :min    :minutes
 
   def hours
     self.to_f
@@ -34,11 +34,11 @@ class Numeric
   alias :h    :hours
 
   def daily
-    self / 30.0
+    self * 30.0
   end
 
   def weekly
-    self / (30.0/7.0)
+    self * (30.0/7.0)
   end
 
   def monthly

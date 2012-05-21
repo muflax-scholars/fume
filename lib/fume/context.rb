@@ -7,9 +7,6 @@ module Fume
       @name = name
       @tasks = []
       @weight = 0
-
-      # relative weights as syntactic sugar
-      # we normalize based on months
     end
 
     def optional
