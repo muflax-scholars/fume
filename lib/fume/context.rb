@@ -10,9 +10,6 @@ module Fume
 
       # relative weights as syntactic sugar
       # we normalize based on months
-      @day      = 1/30.0
-      @week     = 1/(30.0/7.0)
-      @month    = 1.0
     end
 
     def optional

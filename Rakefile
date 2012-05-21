@@ -15,7 +15,6 @@ task :clean do
   sh "rm -f pkg/*"
 end
 
-
 desc "install a gem"
 task :install => [:clean, :build] do
   sh "gem install --no-format-executable pkg/future_me-*.gem"
