@@ -1,12 +1,14 @@
 #!/usr/bin/env ruby
-begin
+
+# load library
+file = File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__
+lib = File.join File.dirname(file), "/../lib/fume"
+
+if File.exists? lib
+  puts "using local version at #{lib}..."
+  require lib
+else
   require 'fume'
-rescue LoadError
-  if File.symlink? __FILE__
-    require File.dirname(File.readlink(__FILE__)) + '/../lib/fume'
-  else
-    require File.dirname(__FILE__) + '/../lib/fume'
-  end
 end
 
 fume = Fume::CLI.new 10..20

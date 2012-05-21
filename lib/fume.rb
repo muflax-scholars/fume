@@ -2,8 +2,7 @@ require "highline"
 require "fumetrap"
 require "yaml"
 
-require "fume/config"
-require "fume/context"
-require "fume/cli"
-require "fume/dsl"
-require "fume/fumes"
+# local libs
+Dir["#{File.join(File.dirname(__FILE__), "fume")}/*.rb"].each do |lib|
+  require lib
+end
