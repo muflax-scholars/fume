@@ -46,7 +46,7 @@ class Numeric
   end
 
   def per interval
-    case interal
+    case interval
     when :day
       self.daily
     when :week
