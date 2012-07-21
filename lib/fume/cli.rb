@@ -379,7 +379,7 @@ module Fume
       end
 
       puts "Working on #{color_task(task)}..."
-      @log.write "#{Time.now.strftime("%s")} #{task}"
+      @log.write "#{Time.now.strftime("%s")} #{task}\n"
       
       # extract context the item is in for fumetrap
       @fumes.fumetrap "sheet #{task.context.name}"
