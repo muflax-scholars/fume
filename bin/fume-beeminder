@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
-# Simple script to get old fume data and send it to beeminder. Adjust data. Put
-# it in a daily cron job. Pay for dreeves' hookers.
+# Simple script to get old fume data and send it to beeminder. Put it in a daily
+# cron job. Pay for dreeves' hookers.
 
 debug = false
 send  = true
@@ -53,8 +53,8 @@ fume.fumes.update_quotas(fume.fumes.filter_since yaml["start"].strftime(fmt))
 contexts = Set.new(fume.fumes.contexts.map(&:name))
 
 # report each entry
-done = []
-body = ""
+valid = []
+time_body = ""
 margin = Chronic.parse("1 hour ago")
 unreps.each do |entry|
   # check if it's in a valid context and not too new
@@ -65,13 +65,19 @@ unreps.each do |entry|
   date = entry.start
   score = "%0.2f" % (entry.duration / (60.0*60.0))
   text  = "fume update, context: #{entry.sheet}"
-  body << "#{date.strftime("%Y %m %d")} #{score} \"#{text}\"\n"
+  time_body << "#{date.strftime("%Y %m %d")} #{score} \"#{text}\"\n"
 
   # mark it as done later
-  done << entry
+  valid << entry
 end
 
-if done.empty?
+# report all valid boxes in second goal
+date = valid.max_by {|e| e.start}
+score = valid.size
+text  = "timebox update, contexts: #{valid.map{|e| e.sheet}.uniq.sort}"
+boxes_body = "#{date.strftime("%Y %m %d")} #{score} \"#{text}\"\n"
+
+if valid.empty?
   puts "nothing to update (yet)..." if debug
   exit
 end
@@ -79,32 +85,42 @@ end
 # send data
 if not send
   puts "would send:"
-  puts body
+  puts "time:"
+  puts time_body
+  puts "boxes:"
+  puts boxes_body
 else
-  require 'net/http'
-  
-  base = "http://beta.beeminder.com"
-  cmd  = "create_all"
-  api  = "#{base}/#{yaml["account"]}/goals/#{yaml["goal"]}/datapoints/#{cmd}"
+  def send_beeminder goal, data
+    require 'net/http'
+    
+    base = "http://beta.beeminder.com"
+    cmd  = "create_all"
+    api  = "#{base}/#{yaml["account"]}/goals/#{goal}/datapoints/#{cmd}"
 
-  puts "using api: #{api}" if debug
+    puts "using api: #{api}" if debug
 
-  begin # connect
-    url = URI.parse(api)
-    http = Net::HTTP.new(url.host, url.port)
-    http.read_timeout = 8640
-    http.start do |http|
-      req = Net::HTTP::Post.new(url.path)
-      req.set_form_data({"datapoints_text" => body,
-                          "origin" => "#{yaml["account"]}_api",
-                          "sendmail" => false})
-      res = http.request(req)
+    begin # connect
+      url = URI.parse(api)
+      http = Net::HTTP.new(url.host, url.port)
+      http.read_timeout = 8640
+      http.start do |http|
+        req = Net::HTTP::Post.new(url.path)
+        req.set_form_data({"datapoints_text" => data,
+                            "origin" => "#{yaml["account"]}_api",
+                            "sendmail" => false})
+        res = http.request(req)
+      end
+    rescue StandardError, Timeout::Error
+      put "connection failed..."
+      put res
+      exit 1
     end
-  rescue StandardError, Timeout::Error
-    put "connection failed..."
-    put res
-    exit 1
   end
+  
+  send_beeminder yaml["goal-time"], time_body
+  send_beeminder yaml["goal-boxes"], boxes_body
+end
+
 end
 
 # save data

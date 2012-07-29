@@ -1,0 +1,6 @@
+* TODO [3/5]
+- [X] timebox constraints
+- [ ] rating / notes on timeboxes
+- [X] use timeboxes
+- [X] better orwellize
+- [ ] cache answers (requires switch to readline)

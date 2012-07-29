@@ -11,5 +11,5 @@ else
   require 'fume'
 end
 
-fume = Fume::CLI.new 10..20
+fume = Fume::CLI.new
 fume.run

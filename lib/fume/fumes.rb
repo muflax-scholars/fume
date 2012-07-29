@@ -1,6 +1,6 @@
 module Fume
   class Fumes
-    attr_reader :contexts, :quotas, :urgent_contexts
+    attr_reader :contexts, :quotas, :timeboxes, :urgent_contexts
     
     def initialize
       # initialize fumetrap
@@ -19,17 +19,12 @@ module Fume
       @contexts << ctx
     end
 
-    def tasks
-      # sorted by contexts, then names
-      @contexts.map(&:tasks).flatten
-    end
-
     def urgent_contexts
       @contexts.select{|ctx| ctx.weight > 0}
     end
-    
-    def urgent_tasks
-      urgent_contexts.map(&:tasks).flatten
+
+    def dying_contexts
+      urgent_contexts.select{|ctx| @timeboxes[ctx][:today].size < ctx.frequency}
     end
 
     def intervals
@@ -66,29 +61,37 @@ module Fume
     
     def update_quotas update_intervals=intervals
       @quotas = {}
-
+      @timeboxes = {}
+      
       # quota for individual contexts
       @contexts.each do |context|
         quota = {}
+        timebox = {}
         update_intervals.each do |time, opt|
           Fumetrap::CLI.parse "#{context} #{opt}"
-          quota[time] =
+          timeboxes =
             begin
               entries = Fumetrap::CLI.selected_entries
-              entries.inject(0) {|m, e| m += e.duration}
+              entries.map(&:duration)
             rescue
-              0
+              []
             end
+          quota[time] = timeboxes.reduce(:+) || 0
+          timebox[time] = timeboxes || []
         end
         @quotas[context] = quota
+        @timeboxes[context] = timebox
       end
-
+      
       # global quota
-      global_quota = {}
+      global_quota     = {}
+      global_timeboxes = {}
       update_intervals.keys.each do |time|
-        global_quota[time] = @quotas.values.reduce(0){|s,v| s+v[time]}
+        global_quota[time]     = @quotas.values.reduce(0){|s,v| s+v[time]}
+        global_timeboxes[time] = @timeboxes.values.reduce([]){|s,v| s+v[time].to_a}
       end
-      @quotas[:all] = global_quota
+      @quotas[:all]    = global_quota
+      @timeboxes[:all] = global_timeboxes
     end
 
     def global_weight
@@ -99,22 +102,20 @@ module Fume
       @quotas[:all]
     end
 
+    def global_timeboxes
+      @timeboxes[:all]
+    end
+
     def sort_contexts_by_urgency
       # cache order for suggestion
-      @urgent_contexts = contexts.sort do |a,b|
-        a_n = necessary_for(a, :week)
-        b_n = necessary_for(b, :week)
-
-        # the more hours left, the more important
-        if a_n == b_n
-          if b.weight == a.weight
-            rand <=> rand
-          else
-            b.weight <=> b.weight
-          end
-        else
-          b_n <=> a_n
-        end
+      contexts = dying_contexts
+      if contexts.empty? 
+        contexts = urgent_contexts
+      end
+      
+      @urgent_contexts = contexts.sort_by do |ctx|
+        # the more hours, the more important; otherwise go by weight, but avoid some determinism
+        [- necessary_for(ctx, :week), ctx.weight, rand]
       end
     end
     
@@ -189,4 +190,3 @@ module Fume
     end
   end
 end
-

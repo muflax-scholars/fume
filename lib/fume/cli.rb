@@ -1,9 +1,9 @@
+# -*- coding: utf-8 -*-
 module Fume
   class CLI
     attr_reader :fumes
     
-    def initialize time=(10..20)
-      @time = time
+    def initialize
       @hl = HighLine.new
       @log = File.open(File.join(Fume::Config["fume_dir"],
                                  Fume::Config["log"]), "a")
@@ -12,10 +12,7 @@ module Fume
       @signal_file = Fume::Config["signal"]
       @fumes = Fume::Fumes.new
 
-      # TODO this should be cached somewhere
-      @last_task = nil
-      @last_note = ""
-      @last_shown_tasks = nil
+      @last_shown_contexts = nil
       @last_modified = 0
       
       @commands = {}
@@ -28,45 +25,26 @@ module Fume
       end
       
       add_command "choose" do
-        choose
+        ctx = choose_context
+        work_on ctx
       end
 
       add_command "or(w)ellize" do
         orwellize
       end
 
-      add_command "random" do
-        choose_randomly
-      end
-      
       add_command "upload" do
         print "Contacting HQ..."
         system "fume-beeminder -f" and puts " done."
       end
 
-      add_command "back" do
-        raise Interrupt
-      end
-      
-      add_command "list tasks" do
-        show_tasks :tasks
+      add_command "list" do
+        show_contexts :urgent
       end
 
       add_command "list (a)ll" do
         system "clear"
-        show_tasks :all
-      end
-
-      add_command "keep going" do
-        if Fumetrap::Timer.running?
-          # just keep on going
-          recharge
-        elsif not @last_task.nil?
-          # check in last task
-          work_on @last_task
-        else
-          puts "Memory fault: last task forgotten. Fishing aborted."
-        end
+        show_contexts :all
       end
 
       add_command "check (o)ut" do
@@ -119,7 +97,7 @@ module Fume
       end
     end
     
-    def show_tasks filter=:all
+    def show_contexts filter=:all
       system "clear"
       show_todo filter
     end
@@ -130,71 +108,74 @@ module Fume
       # grab new data
       reload
       
-      # find all tasks and apply filter
-      tasks =
-        if filter == :tasks
+      # find all contexts and apply filter
+      contexts =
+        if filter == :urgent
           # only contexts that have positive weight
-          @fumes.urgent_tasks
+          @fumes.urgent_contexts
         elsif filter.is_a? Context
-          filter.tasks
+          [filter]
         else
-          @fumes.tasks
+          @fumes.contexts
         end.sort
-      @last_shown_tasks = tasks # remember tasks for choose command
+      @last_shown_contexts = contexts # remember selection for choose command
 
-      ctx_length = length_of_longest_in tasks.map{|t| t.context}
+      ctx_length = length_of_longest_in contexts
       
       # let's make some sausage
-      tasks.each_with_index do |task, i|
-        quota        = @fumes.quotas[task.context]
-        weight       = task.context.weight
+      contexts.each_with_index do |ctx, i|
+        quota        = @fumes.quotas[ctx]
+        timeboxes    = @fumes.timeboxes[ctx]
+        weight       = ctx.weight
         target       = weight.to_f / @fumes.global_weight
-        repeated_cxt = (i > 0 && tasks[i-1].context.name == task.context.name)
+
+        boxes  = timeboxes[:today].size
+        living = boxes >= ctx.frequency
 
         ratios      = {}
         necessaries = {}
         @fumes.times.each do |time|
+          # total worked time
           ratio = unless @fumes.global_quota[time].zero?
                     (quota[time].to_f / @fumes.global_quota[time])
                   else
                     0.0
                   end
           diff = ratio / target
-          color = if repeated_cxt
-                    :bright_black
-                  elsif target.zero?
-                    :white
-                  elsif diff > 0.8
-                    :green
-                  elsif diff > 0.5
-                    :yellow
-                  else
-                    :red
-                  end
-          ratios[time] = @hl.color("%3.0f%%" % [ratio * 100], color)
+          rat_color = if target.zero?
+                        :white
+                      elsif diff > 0.8
+                        :green
+                      elsif diff > 0.5
+                        :yellow
+                      else
+                        :red
+                      end
+          ratios[time] = @hl.color("%3.0f%%" % [ratio * 100], rat_color)
 
           # How many hours do I have to add to make the target?
-          necessary = @fumes.necessary_for(task.context, time) / 3600.0
+          necessary = @fumes.necessary_for(ctx, time) / 3600.0
           necessaries[time] = @hl.color((necessary.abs < 9.96 ? # rounded to 10.0
                                          "%+4.1f" % necessary :
                                          "%+4.0f" % necessary),
-                                        repeated_cxt ? :bright_black : :white)
+                                        :white)
         end
+        
+        
+        performances = @fumes.times.map{|t| "#{ratios[t]}#{necessaries[t]}"}.join ' | '
 
-        ratings = @fumes.times.map{|t| "#{ratios[t]}#{necessaries[t]}"}.join ' | '
-
-        puts "%{id} %{weight} %{rating} %{context} %{id} %{pause}%{task}" % {
+        puts "%{id} %{context} %{boxes} %{weight} %{performance}" % {
           id: @hl.color("<%02d>" % (i + 1), :magenta),
-          context: @hl.color("%#{ctx_length+1}s" % ("@#{task.context}"),
-                             repeated_cxt ? :bright_black : :yellow),
-          rating: @hl.color("[#{ratings}]",
-                            repeated_cxt ? :bright_black : :white),
+          context: @hl.color("@#{ctx}".center(ctx_length+1),
+                             living ? :white : :yellow),
+          performance: @hl.color("[#{performances}]",
+                                 :white),
           target: @hl.color("%3.0f%%" % (target*100),
-                            repeated_cxt ? :bright_black : :white),
+                            :white),
           weight: @hl.color("%3dh" % (weight),
-                            repeated_cxt ? :bright_black : :white),
-          task: task.name,
-          pause: ("*" if task.paused?)
+                            :white),
+          boxes: @hl.color("[%2d/%2d]" % [boxes, ctx.frequency],
+                           living ? :white : :red),
         }
       end
 
@@ -214,10 +195,15 @@ module Fume
                        :white
                      end
 
-      puts "sum: %{weight}h [#{hours.join ' | '}]" % {
+      total_boxes = @fumes.global_timeboxes[:today].size
+      total_frequency = contexts.reduce(0) {|s,c| s + c.frequency}
+      
+      puts "sum: #{" "*(ctx_length+1)} %{boxes} %{weight}h [#{hours.join ' | '}]" % {
+        boxes: @hl.color("[%2d/%2d]" % [total_boxes, total_frequency],
+                         total_boxes < total_frequency ? :red : :white),
         weight: @hl.color("%3d" % @fumes.global_weight, weight_color),
       }
-      puts "balance:  [#{unbalance.join ' | '}]"
+      puts "balance: #{" "*(ctx_length+10)} [#{unbalance.join ' | '}]"
     end
 
     def length_of_longest_in(list)
@@ -229,7 +215,8 @@ module Fume
     def run
       system "clear"
       puts "Starting time machine."
-      puts "River of time will be fished every #{@time.begin} to #{@time.end} minutes..."
+
+      show_todo :urgent
 
       while true
         begin
@@ -239,16 +226,6 @@ module Fume
           puts "Time machine boggled, recalibrating..."
         end
       end
-    end
-
-    def recharge
-      puts
-      puts "Time machine is recharging..."
-      sleep @time.to_a.sample * 60
-
-      system "clear"
-      system "mplayer -really-quiet #{@signal_file} &"
-      puts "#{@hl.color("-> BZZZ <-".center(30), :red)}\a"
     end
 
     def exec_command prompt, desc
@@ -273,9 +250,8 @@ module Fume
       prompt = [
                 :suggestion,
                 :choose,
-                :list_tasks,
+                :list,
                 :list_all,
-                :keep_going,
                 :check_out,
                 :upload,
                 :orwellize,
@@ -293,13 +269,6 @@ module Fume
       end
     end
 
-    def color_task task
-      "%{context} %{task}" % {
-        context: @hl.color("@#{task.context}", :yellow),
-        task: task.name,
-      }
-    end
-
     def color_context ctx
       "%{context}" % {
         context: @hl.color("@#{ctx}", :yellow),
@@ -307,7 +276,7 @@ module Fume
     end
 
     def suggest
-      # pick a context to work on, then suggest tasks
+      # pick a context to work on, then suggest bawkses
       ctx = @fumes.suggest_context
 
       if ctx.nil?
@@ -317,13 +286,7 @@ module Fume
 
       puts "Urgency detection module suggests #{color_context(ctx)}."
       show_todo ctx
-
-      prompt = [
-                :choose,
-                :random,
-                :back,
-               ]
-      exec_command prompt, "What task do you want?"
+      work_on ctx
     end
 
     def show_suggestion
@@ -335,20 +298,43 @@ module Fume
       puts "Fish spotted: #{color_context(ctx)}"
     end
     
-    def choose
-      if @last_shown_tasks.nil? # have never shown tasks, so do it now
-        show_tasks :tasks
+    def choose_context
+      if @last_shown_contexts.nil? # have never shown anything, so do it now
+        show_contexts :urgent
       end
       
       id = @hl.ask("What item do you want? ", Integer) do |q|
-        q.in = 1..@last_shown_tasks.size
+        q.in = 1..@last_shown_contexts.size
       end
       
-      task = @last_shown_tasks[id - 1]
-      work_on task
+      ctx = @last_shown_contexts[id - 1]
+
+      ctx
     end
 
-    # Change the starting time of a running task.
+    def choose_timebox ctx
+      # offer various durations
+      boxes = [1, 10, 20, 60, :custom]
+      desc = boxes.map.with_index do |b, i|
+        keywordify "(#{i+1}) "+(b.is_a?(Integer) ? "#{b}min" : "custom"), :green
+      end.join " | "
+      
+      puts "Timeboxes: #{desc}"
+      d_id = @hl.ask("Who long do you feel like working? ", Integer) do |q|
+        q.in = 1..boxes.size
+        q.limit = 1
+      end
+      duration = boxes[d_id-1]
+      if duration == :custom
+        duration = @hl.ask("Who long, snowflake? ", Integer) {|q| q.in = 0..(60*24)}
+      end
+
+      timebox = Fume::Timebox.new duration
+
+      timebox
+    end
+    
+    # Insert a previous timebox or change the starting time of a running one.
     def orwellize
       if Fumetrap::Timer.running?
         time = @hl.ask("When did you really start? ", String) do |q|
@@ -359,60 +345,60 @@ module Fume
           @fumes.fumetrap "edit -s '#{time}'"
         end
       else
-        puts "No running task; please use fumetrap."
-      end
-    end
-    
-    def choose_randomly
-      if @last_shown_tasks.nil? # have never shown tasks, so do it now
-        show_tasks :tasks
-      end
+        # add a new context
+        show_todo :all
+        ctx = choose_context
+        start_time = @hl.ask("When did you start? ", String) do |q|
+          q.readline = true
+        end
+        stop_time = @hl.ask("When did you stop? [leave empty to keep open] ", String) do |q|
+          q.readline = true
+        end
 
-      task = @last_shown_tasks.sample
-      work_on task
+        unless start_time.empty?
+          @fumes.fumetrap "in -a '#{start_time}' #{ctx}"
+          @fumes.fumetrap "out -a '#{start_time}'" unless stop_time.empty?
+        end
+      end
     end
     
-    def work_on task
+    def work_on ctx
+      # check that it's a valid context
+      unless @fumes.dying_contexts.empty? or @fumes.dying_contexts.include? ctx
+        puts "Refused. Babies are dying here!"
+        return
+      end
+      
       # first check out
       if Fumetrap::Timer.running?
         @fumes.fumetrap "out"
       end
 
-      puts "Working on #{color_task(task)}..."
-      @log.write "#{Time.now.strftime("%s")} #{task}\n"
-      
       # extract context the item is in for fumetrap
-      @fumes.fumetrap "sheet #{task.context.name}"
+      @fumes.fumetrap "sheet #{ctx.name}"
 
-      # add an action
-      note = ""
-      last = @last_note.empty? ? "n/a" : @last_note
-      action = @hl.ask("Care to name a specific action? [ENTER to skip, - for last task (#{last}), ^ to overwrite task]")
+      # get timebox
+      timebox = choose_timebox ctx
       
-      case action
-      when "-"
-        note = @last_note
-      when "^"
-        # create dummy task
-        desc = @hl.ask("What are you doing? [ENTER to skip]")
-        dummy = Task.new(desc, task.context)
-        dummy.pause
-        task = dummy
-      else
-        note = action
-      end
-        
-      unless note.empty?
-        @fumes.fumetrap "in #{task} - #{note}"
-      else
-        @fumes.fumetrap "in #{task}"
-      end
-      
-      @last_task = task
-      @last_note = note
+      @fumes.fumetrap "in #{ctx}"
 
-      # wait before next command
-      recharge
+      puts "Working on #{color_context(ctx)}..."
+      @log.write "#{Time.now.strftime("%s")} #{ctx}\n"
+
+      puts
+      puts "Time machine is recharging..."
+      puts "River of time will be fished in #{timebox.duration} minutes..."
+
+      timebox.start do 
+        system "clear"
+        system "mplayer -really-quiet #{@signal_file} &"
+        system "gxmessage -timeout 5 'やった！(*＾０＾*)' &"
+      end
+
+      # automatically stop tracking
+      @fumes.fumetrap "out"
+
+      puts "#{@hl.color("  -> BZZZ <-", :red)}\a"
     end
   end
 end
