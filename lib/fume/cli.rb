@@ -314,7 +314,7 @@ module Fume
 
     def choose_timebox ctx
       # offer various durations
-      boxes = [1, 10, 20, 60, :custom]
+      boxes = [1, 5, 10, 20, 60, :custom]
       desc = boxes.map.with_index do |b, i|
         keywordify "(#{i+1}) "+(b.is_a?(Integer) ? "#{b}min" : "custom"), :green
       end.join " | "
