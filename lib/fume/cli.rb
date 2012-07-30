@@ -166,7 +166,7 @@ module Fume
 
         puts "%{id} %{context} %{boxes} %{weight} %{performance}" % {
           id: @hl.color("<%02d>" % (i + 1), :magenta),
-          context: @hl.color("@#{ctx}".center(ctx_length+1),
+          context: @hl.color("#{ctx}".center(ctx_length+1),
                              living ? :white : :yellow),
           performance: @hl.color("[#{performances}]",
                                  :white),
@@ -271,7 +271,7 @@ module Fume
 
     def color_context ctx
       "%{context}" % {
-        context: @hl.color("@#{ctx}", :yellow),
+        context: @hl.color("#{ctx}", :yellow),
       }
     end
 
