@@ -71,16 +71,16 @@ unreps.each do |entry|
   valid << entry
 end
 
-# report all valid boxes in second goal
-date = valid.max_by {|e| e.start}
-score = valid.size
-text  = "timebox update, contexts: #{valid.map{|e| e.sheet}.uniq.sort}"
-boxes_body = "#{date.strftime("%Y %m %d")} #{score} \"#{text}\"\n"
-
 if valid.empty?
   puts "nothing to update (yet)..." if debug
   exit
 end
+
+# report all valid boxes in second goal
+date = valid.max_by{|e| e.start}.start
+score = valid.size
+text  = "timebox update, contexts: #{valid.map{|e| e.sheet}.uniq.sort.join(",")}"
+boxes_body = "#{date.strftime("%Y %m %d")} #{score} \"#{text}\"\n"
 
 # send data
 if not send
@@ -90,14 +90,12 @@ if not send
   puts "boxes:"
   puts boxes_body
 else
-  def send_beeminder goal, data
+  def send_beeminder account, goal, data
     require 'net/http'
     
     base = "http://beta.beeminder.com"
     cmd  = "create_all"
-    api  = "#{base}/#{yaml["account"]}/goals/#{goal}/datapoints/#{cmd}"
-
-    puts "using api: #{api}" if debug
+    api  = "#{base}/#{account}/goals/#{goal}/datapoints/#{cmd}"
 
     begin # connect
       url = URI.parse(api)
@@ -106,7 +104,7 @@ else
       http.start do |http|
         req = Net::HTTP::Post.new(url.path)
         req.set_form_data({"datapoints_text" => data,
-                            "origin" => "#{yaml["account"]}_api",
+                            "origin" => "#{account}_api",
                             "sendmail" => false})
         res = http.request(req)
       end
@@ -116,16 +114,14 @@ else
       exit 1
     end
   end
-  
-  send_beeminder yaml["goal-time"], time_body
-  send_beeminder yaml["goal-boxes"], boxes_body
-end
 
+  send_beeminder yaml["account"], yaml["goal-time"],  time_body
+  send_beeminder yaml["account"], yaml["goal-boxes"], boxes_body
 end
 
 # save data
 puts "saving..." if debug
-done.each do |entry|
+valid.each do |entry|
   entry.reported!
   entry.save if send
 end
