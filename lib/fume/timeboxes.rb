@@ -8,7 +8,7 @@ module Fume
     end
 
     def start &block
-      sleep @duration # * 60
+      sleep @duration * 60
       yield block if block_given?
     end
   end
