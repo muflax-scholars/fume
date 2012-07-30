@@ -79,7 +79,7 @@ end
 # report all valid boxes in second goal
 date = valid.max_by{|e| e.start}.start
 score = valid.size
-text  = "timebox update, context#{valid.size > 1 ? "s" : ""}: #{valid.map{|e| e.sheet}.uniq.sort.join(",")}"
+text  = "timebox update, context#{valid.size > 1 ? "s" : ""}: #{valid.map{|e| e.sheet}.uniq.sort.join(", ")}"
 boxes_body = "#{date.strftime("%Y %m %d")} #{score} \"#{text}\"\n"
 
 # send data
