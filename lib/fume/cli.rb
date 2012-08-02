@@ -356,8 +356,9 @@ module Fume
         end
 
         unless start_time.empty?
+          @fumes.fumetrap "sheet #{ctx.name}"
           @fumes.fumetrap "in -a '#{start_time}' #{ctx}"
-          @fumes.fumetrap "out -a '#{start_time}'" unless stop_time.empty?
+          @fumes.fumetrap "out -a '#{stop_time}'" unless stop_time.empty?
         end
       end
     end
