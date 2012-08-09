@@ -3,22 +3,11 @@
 # Simple script to get old fume data and send it to beeminder. Put it in a daily
 # cron job. Pay for dreeves' hookers.
 
-debug = false
-send  = true
-
 require "chronic"
-require "set"
+require 'net/http'
 require "optparse"
+require "set"
 
-options = {}
-OptionParser.new do |opts|
-  opts.banner = "usage: fume-beeminder [-f]"
-
-  opts.on("-f", "--force", "force update") do |v|
-    options[:force] = v
-  end
-end.parse!
-  
 begin
   require 'fume'
 rescue LoadError
@@ -29,99 +18,123 @@ rescue LoadError
   end
 end
 
-# get all days we haven't reported yet
+margin = Chronic.parse("1 hour ago")
+
+# load configs
+options = {}
+OptionParser.new do |opts|
+  opts.banner = "usage: fume-beeminder [-f]"
+
+  opts.on("-f", "--force", "force update") do |o|
+    options[:force] = o
+  end
+  opts.on("-d", "--debug", "debug") do |o|
+    options[:debug] = o
+  end
+  opts.on("-n", "--pretend", "pretend to send data") do |o|
+    options[:pretend] = o
+  end
+end.parse!
 bee_log = File.join(Fume::Config["fume_dir"], Fume::Config["beeminder"])
-yaml = YAML::load(File.open(bee_log))
+yaml    = YAML::load(File.open(bee_log))
+
+# find unreported entries
 Fumetrap::CLI.args = Getopt::Declare.new("#{Fumetrap::CLI::USAGE}")
 Fumetrap::CLI.parse "all -s #{yaml["start"]}"
 
-puts "getting unreported entries..." if debug
-unreps = Fumetrap::CLI.unreported_entries
-puts "found: #{unreps.count}" if debug
+puts "getting unreported entries..." if options[:debug]
+entries = Fumetrap::CLI.unreported_entries
+puts "found: #{entries.count}" if options[:debug]
 
-if unreps.count.zero?
-  puts "nothing to do..." if debug
+if entries.count.zero?
+  puts "nothing to do..." if options[:debug]
   exit
 end
 
 # load fume data
-puts "loading fume data..." if debug
+puts "loading fume data..." if options[:debug]
 fmt  = "%Y-%m-%d"
 fume = Fume::CLI.new
 fume.load_file
 fume.fumes.update_quotas(fume.fumes.filter_since yaml["start"].strftime(fmt))
 contexts = Set.new(fume.fumes.contexts.map(&:name))
 
-# report each entry
-valid = []
-time_body = ""
-margin = Chronic.parse("1 hour ago")
-unreps.each do |entry|
-  # check if it's in a valid context and not too new
-  next if not contexts.include? entry.sheet
-  next if entry.end >= margin and not options[:force]
+# select entries in a valid context and not too new
+to_report = entries.to_a.reject {|entry| not contexts.include?(entry.sheet) or (entry.end >= margin and not options[:force])}
 
-  # build data point
-  date = entry.start
-  score = "%0.2f" % (entry.duration / (60.0*60.0))
-  text  = "fume update, context: #{entry.sheet}"
-  time_body << "#{date.strftime("%Y %m %d")} #{score} \"#{text}\"\n"
-
-  # mark it as done later
-  valid << entry
-end
-
-if valid.empty?
-  puts "nothing to update (yet)..." if debug
+if to_report.empty?
+  puts "nothing to update (yet)..." if options[:debug]
   exit
 end
 
-# report all valid boxes in second goal
-date = valid.max_by{|e| e.start}.start
-score = valid.size
-text  = "timebox update, context#{valid.size > 1 ? "s" : ""}: #{valid.map{|e| e.sheet}.uniq.sort.join(", ")}"
-boxes_body = "#{date.strftime("%Y %m %d")} #{score} \"#{text}\"\n"
+# build data for all goals
+data = {}
+yaml["goals"].each do |goal|
+  # only use entries from certain contexts, if specified, or all otherwise
+  allowed_contexts = goal["contexts"].nil? ? contexts : Set.new([*goal["contexts"]].flatten)
+  puts "to report for #{goal["name"]}:" if options[:debug]
+
+  valid = to_report.select {|e| allowed_contexts.include? e.sheet}
+  next if valid.empty?
+
+  # we assume only cumulative goals
+  score = "%0.2f" % valid.reduce(0) do |score, entry|
+    puts "  -> #{entry.sheet}" if options[:debug]
+    
+    # build data point
+    score + case goal["type"]
+            when "time"
+              entry.duration / (60.0*60.0)
+            when "boxes"
+              1
+            else
+              raise "unknown goal type"
+            end
+  end
+  date = valid.max_by{|e| e.start}.start
+  used_contexts = valid.map{|e| e.sheet}.uniq
+  text = "#{goal["name"]} update, context#{valid.size > 1 ? "s" : ""}: #{used_contexts.sort.join(", ")}"
+  body = "#{date.strftime("%Y %m %d")} #{score} \"#{text}\"\n"
+
+  data[goal["name"]] = body
+end
+
+def send_beeminder account, goal, data
+  base = "http://beta.beeminder.com"
+  cmd  = "create_all"
+  api  = "#{base}/#{account}/goals/#{goal}/datapoints/#{cmd}"
+
+  begin # connect
+    url = URI.parse(api)
+    http = Net::HTTP.new(url.host, url.port)
+    http.read_timeout = 8640
+    http.start do |http|
+      req = Net::HTTP::Post.new(url.path)
+      req.set_form_data({"datapoints_text" => data,
+                          "origin" => "#{account}_api",
+                          "sendmail" => false})
+      res = http.request(req)
+    end
+  rescue StandardError, Timeout::Error
+    put "connection failed..."
+    put res
+    exit 1
+  end
+end
 
 # send data
-if not send
-  puts "would send:"
-  puts "time:"
-  puts time_body
-  puts "boxes:"
-  puts boxes_body
-else
-  def send_beeminder account, goal, data
-    require 'net/http'
-    
-    base = "http://beta.beeminder.com"
-    cmd  = "create_all"
-    api  = "#{base}/#{account}/goals/#{goal}/datapoints/#{cmd}"
-
-    begin # connect
-      url = URI.parse(api)
-      http = Net::HTTP.new(url.host, url.port)
-      http.read_timeout = 8640
-      http.start do |http|
-        req = Net::HTTP::Post.new(url.path)
-        req.set_form_data({"datapoints_text" => data,
-                            "origin" => "#{account}_api",
-                            "sendmail" => false})
-        res = http.request(req)
-      end
-    rescue StandardError, Timeout::Error
-      put "connection failed..."
-      put res
-      exit 1
-    end
+data.each do |goal, body|
+  if options[:pretend]
+    puts "would send:"
+    puts body
+  else
+    send_beeminder yaml["account"], goal, body
   end
-
-  send_beeminder yaml["account"], yaml["goal-time"],  time_body
-  send_beeminder yaml["account"], yaml["goal-boxes"], boxes_body
 end
 
 # save data
-puts "saving..." if debug
-valid.each do |entry|
+puts "saving..." if options[:debug]
+to_report.each do |entry|
   entry.reported!
-  entry.save if send
+  entry.save unless options[:pretend]
 end
