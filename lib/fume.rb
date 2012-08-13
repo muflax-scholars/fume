@@ -1,3 +1,4 @@
+require "date"
 require "highline"
 require "fumetrap"
 require "yaml"

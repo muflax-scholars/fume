@@ -13,7 +13,7 @@ module Fume
       @fumes = Fume::Fumes.new
 
       @last_shown_contexts = nil
-      @last_modified = 0
+      @last_modified = Time.new 0
       
       @commands = {}
       init_commands
@@ -87,9 +87,9 @@ module Fume
       t = [
            File.ctime(@fumes_file),
            File.ctime(Fumetrap::Config["database_file"]),
-          ].map(&:to_i).max
-      
-      if t > @last_modified
+          ].max
+
+      if t > @last_modified or not t.to_date === @last_modified.to_date
         @last_modified = t
         return true
       else
