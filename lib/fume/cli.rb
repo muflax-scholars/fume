@@ -346,7 +346,10 @@ module Fume
         end
       else
         # add a new context
-        show_todo :all
+        if @last_shown_contexts.nil? # have never shown anything, so do it now
+          show_contexts :all
+        end
+        
         ctx = choose_context
         start_time = @hl.ask("When did you start? ", String) do |q|
           q.readline = true
