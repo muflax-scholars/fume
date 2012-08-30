@@ -89,8 +89,11 @@ module Fume
            File.ctime(Fumetrap::Config["database_file"]),
           ].max
 
-      if t > @last_modified or not t.to_date === @last_modified.to_date
+      if t > @last_modified
         @last_modified = t
+        return true
+      elsif @last_modified.to_date < Date.today
+        @last_modified = Time.now
         return true
       else
         return false
