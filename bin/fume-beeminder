@@ -4,9 +4,10 @@
 # cron job. Pay for dreeves' hookers.
 
 require "chronic"
-require 'net/http'
+require 'net/https'
 require "optparse"
 require "set"
+require "uri"
 
 begin
   require 'fume'
@@ -93,31 +94,42 @@ yaml["goals"].each do |goal|
   end
   date = valid.max_by{|e| e.start}.start
   used_contexts = valid.map{|e| e.sheet}.uniq
-  text = "#{goal["name"]} update, context#{valid.size > 1 ? "s" : ""}: #{used_contexts.sort.join(", ")}"
-  body = "#{date.strftime("%Y %m %d")} #{score} \"#{text}\"\n"
+  comment = "#{goal["name"]} update, context#{valid.size > 1 ? "s" : ""}: #{used_contexts.sort.join(", ")}"
 
+  body = {
+    date: date,
+    comment: comment,
+    value: score,
+  }
+  
   data[goal["name"]] = body
 end
 
-def send_beeminder account, goal, data
-  base = "http://beta.beeminder.com"
-  cmd  = "create_all"
-  api  = "#{base}/#{account}/goals/#{goal}/datapoints/#{cmd}"
-
+def send_beeminder config, goal, data
+  base = "https://www.beeminder.com/api/v1"
+  cmd  = "datapoints"
+  api  = "#{base}/users/#{config["account"]}/goals/#{goal}/#{cmd}.json"
+  
   begin # connect
     url = URI.parse(api)
     http = Net::HTTP.new(url.host, url.port)
     http.read_timeout = 8640
+    http.use_ssl = true
     http.start do |http|
       req = Net::HTTP::Post.new(url.path)
-      req.set_form_data({"datapoints_text" => data,
-                          "origin" => "#{account}_api",
-                          "sendmail" => false})
+      req.set_form_data({"timestamp" => data[:date].strftime("%s"),
+                          "value" => data[:value],
+                          "comment" => data[:comment],
+                          "auth_token" => config["token"],
+                        })
       res = http.request(req)
+      if not res.is_a? Net::HTTPSuccess
+        puts res.body
+        raise "wrong response"
+      end
     end
-  rescue StandardError, Timeout::Error
-    put "connection failed..."
-    put res
+  rescue RuntimeError, StandardError, Timeout::Error
+    puts "connection failed..."
     exit 1
   end
 end
@@ -128,7 +140,7 @@ data.each do |goal, body|
     puts "would send:"
     puts body
   else
-    send_beeminder yaml["account"], goal, body
+    send_beeminder yaml, goal, body
   end
 end
 
