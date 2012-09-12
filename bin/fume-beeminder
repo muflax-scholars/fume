@@ -113,7 +113,7 @@ data.each do |goal, body|
     puts body
   else
     config = YAML.load File.open("#{Dir.home}/.beeminderrc")
-    bee = Beeminder::User.new config["account"], config["token"]
+    bee = Beeminder::User.new config["token"]
     g = bee.goal goal
     dp = Beeminder::Datapoint.new("timestamp" => body[:date].strftime('%s'),
                                   "value" => body[:value],
