@@ -370,12 +370,6 @@ module Fume
     end
     
     def work_on ctx
-      # check that it's a valid context
-      unless @fumes.dying_contexts.empty? or @fumes.dying_contexts.include? ctx
-        puts "Refused. Babies are dying here!"
-        return
-      end
-      
       # first check out
       if Fumetrap::Timer.running?
         @fumes.fumetrap "out"
