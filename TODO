@@ -1,6 +1,4 @@
-* TODO [3/5]
-- [X] timebox constraints
+* TODO [0/3]
 - [ ] rating / notes on timeboxes
-- [X] use timeboxes
-- [X] better orwellize
 - [ ] cache answers (requires switch to readline)
+- [ ] better output format so we don't have to call clear all the time
