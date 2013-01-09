@@ -317,24 +317,31 @@ module Fume
 
     def choose_timebox ctx
       # offer various durations
-      boxes = [1, 5, 10, 20, 30, 60, :custom]
+      boxes = [1, 5, 10, 20, 30, 60]
       
-      desc = boxes.map.with_index do |b, i|
-        keywordify "(#{i+1}) "+(b.is_a?(Integer) ? "#{b}min" : "custom"), :green
-      end.join " | "
-      
+      box_desc  = boxes.map.with_index{|b, i| "(#{i+1}) #{b}min"}
+      misc_desc = ["custom", "open"]
+
+      desc = (box_desc + misc_desc).map{|d| keywordify d, :green}.join " | "
+
       puts "Timeboxes: #{desc}"
-      d_id = @hl.ask("Who long do you feel like working? ", Integer) do |q|
-        q.in = 1..boxes.size
+      d_id = @hl.ask("Who long do you feel like working? ", String) do |q|
+        q.in = (1..boxes.size).map(&:to_s) + misc_desc.map{|d| d[0]}
         q.limit = 1
       end
-      duration = boxes[d_id-1]
-      if duration == :custom
-        duration = @hl.ask("Who long, snowflake? ", Integer) {|q| q.in = 0..(60*24)}
-      end
 
-      timebox = Fume::Timebox.new duration
+      duration = case d_id
+                 when ("1"..boxes.size.to_s)
+                   boxes[d_id.to_i-1]
+                 when "custom"[0]
+                   @hl.ask("Who long, snowflake? ", Integer) {|q| q.in = 0..(60*24)}
+                 when "open"[0]
+                   puts "Alright, keep working."
+                   0
+                 end
 
+      timebox = duration > 0 ? Fume::Timebox.new(duration) : nil
+      
       timebox
     end
     
@@ -387,14 +394,24 @@ module Fume
       puts "Working on #{color_context(ctx)}..."
       @log.write "#{Time.now.strftime("%s")} #{ctx}\n"
 
-      puts
-      puts "Time machine is recharging..."
-      puts "River of time will be fished in #{timebox.duration} minutes..."
+      if timebox.nil?
+        puts
+        puts "Time machine in manual mode!"
+        puts "River of time is under indefinite observation..."
 
-      timebox.start do 
-        system "clear"
-        system "mplayer -really-quiet #{@signal_file} &"
-        system "gxmessage -timeout 5 'やった！(*＾０＾*)' &"
+        @hl.ask("[Press enter when done.] ", String) do |q|
+          q.readline = true
+        end
+      else
+        puts
+        puts "Time machine is recharging..."
+        puts "River of time will be fished in #{timebox.duration} minutes..."
+
+        timebox.start do 
+          system "clear"
+          system "mplayer -really-quiet #{@signal_file} &"
+          system "gxmessage -timeout 5 'やった！(*＾０＾*)' &"
+        end
       end
 
       # automatically stop tracking
