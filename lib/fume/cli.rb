@@ -36,6 +36,8 @@ module Fume
       add_command "upload" do
         print "Contacting HQ..."
         system "fume-beeminder -f" and puts " done."
+
+        show_contexts :urgent
       end
 
       add_command "list" do
@@ -43,12 +45,13 @@ module Fume
       end
 
       add_command "list (a)ll" do
-        system "clear"
         show_contexts :all
       end
 
       add_command "check (o)ut" do
         @fumes.fumetrap "out"
+
+        show_contexts :urgent
       end
 
       add_command "quit", color: :red do
@@ -418,6 +421,8 @@ module Fume
       @fumes.fumetrap "out"
 
       puts "#{@hl.color("  -> BZZZ <-", :red)}\a"
+
+      show_contexts :urgent
     end
   end
 end
