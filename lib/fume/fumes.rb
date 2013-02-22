@@ -157,8 +157,8 @@ module Fume
       total = global_quota[time]
 
       until queue.empty?
-        ctx = queue.pop
-        quota = quotas[ctx][time]
+        context = queue.pop
+        quota = quotas[context][time]
         target = ctx.weight.to_f / global_weight
 
         # Check we are still unbalanced.
