@@ -1,0 +1,15 @@
+#!/usr/bin/env ruby
+
+# load library
+file = File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__
+lib = File.join File.dirname(file), "/../lib/fume"
+
+if File.exists? lib
+  # using local version
+  require lib
+else
+  require 'fume'
+end
+
+Fumetrap::CLI.args = Getopt::Declare.new("#{Fumetrap::CLI::USAGE}")
+Fumetrap::CLI.invoke
