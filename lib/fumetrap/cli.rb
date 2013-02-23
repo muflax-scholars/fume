@@ -152,7 +152,7 @@ COMMAND is one of:
         warn "The #{deprecated.inspect} command is deprecated in favor of #{current.inspect}. Sorry for the inconvenience."
         send current
       else
-        warn "Invalid command: #{command.inspect}"
+        warn "Invalid command: #{command.inspect}."
       end
     end
 
@@ -169,22 +169,32 @@ COMMAND is one of:
           e.update :sheet => "_#{e.sheet}"
         end
       else
-        warn "archive aborted!"
+        warn "Archive aborted!"
       end
     end
 
     def configure
       Config.configure!
-      puts "Config file is at #{Config::PATH.inspect}"
+      puts "Config file is at #{Config::PATH.inspect}."
     end
 
     def edit
-      entry = args['-i'] ? Entry[args['-i']] : Timer.active_entry
+      entry = case
+              when args['-i']
+                warn "Editing entry with id #{args['-i'].inspect}"
+                Entry[args['-i']]
+              when Timer.active_entry
+                warn "Editing running entry."
+                Timer.active_entry
+              else
+                warn "Editing last entry."
+                Entry.last
+              end
       unless entry
-        warn "can't find entry"
+        warn "Can't find entry."
         return
       else
-        warn "editing entry ##{entry.id.inspect}"
+        warn "Editing entry ##{entry.id.inspect}."
       end
       entry.update :start => args['-s'] if args['-s'] =~ /.+/
       entry.update :end => args['-e'] if args['-e'] =~ /.+/
@@ -205,6 +215,8 @@ COMMAND is one of:
         end
         entry.update :note => note
       end
+
+      puts format_entries(entry)
     end
 
     def backend
@@ -220,7 +232,7 @@ COMMAND is one of:
       last_entry = Timer.entries(Timer.current_sheet).last
       warn "No entry yet on this sheet yet. Started a new entry." unless last_entry
       note = (last_entry ? last_entry.note : nil)
-      warn "Resuming #{note.inspect} from entry ##{last_entry.id}" if note
+      warn "Resuming #{note.inspect} from entry ##{last_entry.id}." if note
 
       self.unused_args = note || unused_args
 
@@ -239,31 +251,31 @@ COMMAND is one of:
 
     def kill
       if e = Entry[args['-i']]
-        out = "are you sure you want to delete entry #{e.id}? "
+        out = "Are you sure you want to delete entry #{e.id}? "
         out << "(#{e.note}) " if e.note.to_s =~ /.+/
         if ask_user out
           e.destroy
-          warn "it's dead"
+          warn "Deleted."
         else
-          warn "will not kill"
+          warn "Not deleted."
         end
       elsif (sheets = Entry.map{|e| e.sheet }.uniq).include?(sheet = unused_args)
         victims = Entry.filter(:sheet => sheet).count
-        if ask_user "are you sure you want to delete #{victims} entries on sheet #{sheet.inspect}? "
+        if ask_user "Are you sure you want to delete #{victims} entries on sheet #{sheet.inspect}? "
           Entry.filter(:sheet => sheet).destroy
-          warn "killed #{victims} entries"
+          warn "Killed #{victims} entries."
         else
-          warn "will not kill"
+          warn "None deleted."
         end
       else
         victim = args['-i'] ? args['-i'].to_s.inspect : sheet.inspect
-        warn ["can't find #{victim} to kill", 'sheets:', *sheets].join("\n")
+        warn ["Can't find #{victim} to delete.", 'sheets:', *sheets].join("\n")
       end
     end
 
     def display
       entries = selected_entries.order(:start).all
-      puts load_formatter(args['-f'] || Config['default_formatter']).new(entries).output
+      puts format_entries(entries)
     end
 
     def sheet
@@ -276,13 +288,13 @@ COMMAND is one of:
         if Timer.last_sheet
           sheet = Timer.last_sheet
         else
-          warn 'LAST_SHEET is not set'
+          warn 'LAST_SHEET is not set.'
           return
         end
       end
 
       Timer.current_sheet = sheet
-      warn "Switching to sheet #{sheet.inspect}"
+      warn "Switching to sheet #{sheet.inspect}."
     end
 
     def list
@@ -353,5 +365,8 @@ COMMAND is one of:
       $stdin.gets =~ /\Aye?s?\Z/i
     end
 
+    def format_entries(entries)
+      load_formatter(args['-f'] || Config['default_formatter']).new(Array(entries)).output
+    end
   end
 end
