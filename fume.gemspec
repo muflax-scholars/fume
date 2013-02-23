@@ -8,7 +8,7 @@ Gem::Specification.new do |s|
   s.homepage           = 'http://github.com/muflax/fume'
   s.rdoc_options       = ['--charset =UTF-8']
   s.extra_rdoc_files   = %w[README]
-  s.files              = `git ls-files`.split("\n")
+  s.files              = Dir.glob("**/*")
   s.executables        = s.files.grep(/^bin\//).map{|f| File.basename f}
   s.default_executable = "fume"
   
