@@ -156,9 +156,8 @@ module Fume
       # context.
       total = global_quota[time]
 
-      until queue.empty?
-        context = queue.pop
-        quota = quotas[context][time]
+      queue.each do |ctx|
+        quota = quotas[ctx][time]
         target = ctx.weight.to_f / global_weight
 
         # Check we are still unbalanced.
