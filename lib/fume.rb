@@ -3,7 +3,6 @@ require "chronic"
 require "date"
 require "highline/import"
 require "socket"
-require "uuid"
 require "yaml"
 
 # fume libs

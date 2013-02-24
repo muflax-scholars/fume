@@ -32,12 +32,14 @@ module Fume
         dsl = Fume::DSL.new(self)
         dsl.instance_eval(File.read(@fumes_file), @fumes_file)
       end
-      
+
       # load time database
       @entries = {}
       if File.exist? @fume_db
-        entries = YAML.load(File.open(@fume_db)) || {}
-        @entries.merge! entries
+        File.open(@fume_db) do |f|
+          entries = YAML.load(f) || {}
+          @entries.merge! entries
+        end
       end
     end
 
@@ -77,9 +79,13 @@ module Fume
       Chronic.parse(time, opts)
     end
 
+    def modified?
+      last_mod_time < @last_modified
+    end
+    
     # write entries back to files
     def save
-      modified = last_mod_time < @last_modified
+      modified = modified?
       
       # reload files if necessary
       if modified
@@ -109,10 +115,11 @@ module Fume
         YAML.dump(@entries, f)
       end
 
+      # minimize the necessity of reloads
+      @last_modified = File.ctime(@fume_db)
+
       # update caches again if necessary
       update_caches if modified
-
-      @last_modified = last_mod_time
     end
 
     def urgent_contexts
@@ -172,16 +179,22 @@ module Fume
     def start context, start_time=nil
       start_time ||= Time.now
 
+      # make sure we get all changes in
+      init if modified?
+      
       # add new entry
-      entry_id = UUID.generate
+      entry_id = new_id
       entry    = {
-                  :context    => context.name,
-                  :start_time => start_time,
+                  "context"    => context.name,
+                  "start_time" => start_time,
                  }
-
       @entries[entry_id] = entry
       
       save
+    end
+
+    def new_id
+      (@entries.keys.max.to_i + 1).to_s
     end
     
     def stop stop_time=nil
@@ -203,9 +216,16 @@ module Fume
     end
 
     def running?
+      # make sure to reload if necessary
+      init if modified?
+      
       not @running_entries.empty?
     end
 
+    def running_contexts
+      @running_entries.map{|id, e| e[:context]}.uniq.sort
+    end
+    
     def suggest_context
       # just go with most urgent entry for now
       @contexts.first

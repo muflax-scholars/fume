@@ -197,7 +197,7 @@ module Fume
         })
 
       if @fumes.running?
-        contexts = @fumes.running_entries.map{|id, e| e[:context]}.uniq.sort
+        contexts = @fumes.running_contexts
         puts
         puts "In the net: #{contexts.map{|ctx| color_context(ctx)}.join(", ")}"
       end

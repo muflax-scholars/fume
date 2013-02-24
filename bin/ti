@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 
+require "trollop"
+
 # load library
 file = File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__
 lib = File.join File.dirname(file), "/../lib/fume"
@@ -11,5 +13,73 @@ else
   require 'fume'
 end
 
-Fumetrap::CLI.args = Getopt::Declare.new("#{Fumetrap::CLI::USAGE}")
-Fumetrap::CLI.invoke
+commands = %w{display edit in out now}
+
+global_opts = Trollop::options do
+  banner "ti (#{commands.sort.join("|")}) [opts]"
+  opt :config, "Path to config."
+  stop_on_unknown
+end
+
+cmd  = ARGV.shift
+cmds = commands.select{|c| c.start_with? cmd}
+
+if cmds.empty?
+  Trollop::die "unknown command: #{cmd}"
+elsif cmds.size > 1
+  Trollop::die "ambiguous command: #{cmd}"
+else
+  cmd = cmds.first
+end
+
+cmd_opts = Trollop::options do
+  # description
+  case cmd
+  when "display"
+    banner "display: show entries within timeframe"
+  when "now"
+    banner "now: currently active contexts, if any"
+  when "in"
+    banner "in: start timebox"
+  when "out"
+    banner "out: stop timebox"
+  when "edit"
+    banner "edit: edit last timebox"
+  end
+
+  # options
+  
+  if %w{display in edit}.include? cmd
+    opt :start, "start time", :type => :string
+  end
+
+  if %w{display in out edit}.include? cmd
+    opt :stop, "stop time", :short => "-o", :type => :string
+  end
+  
+  if %w{edit}.include? cmd
+    opt :kill, "kill item"
+    opt :id,   "id of item (last by default)"
+  end
+
+  if %w{display}.include? cmd
+    opt :format, "output format", :type => :string, :default => "text"
+  end
+
+  if %w{in}.include? cmd
+    opt :context, "context", :type => :string, :required => true
+  elsif %w{display}.include? cmd
+    opt :context, "context", :type => :string, :default => "all"
+  end
+end
+
+# load fume
+ti = Fume::TimeCLI.new
+
+# convert time strings
+[:start, :stop].each do |opt|
+  cmd_opts[opt] = ti.fumes.parse_time(cmd_opts[opt]) if cmd_opts.include? opt
+end
+
+# invoke cmd
+ti.send(cmd.to_sym, cmd_opts)
