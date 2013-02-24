@@ -11,5 +11,5 @@ else
   require 'fume'
 end
 
-fume = Fume::CLI.new
+fume = Fume::TaskCLI.new
 fume.run

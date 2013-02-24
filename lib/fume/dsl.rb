@@ -9,7 +9,7 @@ module Fume
 
       ctx = Fume::Context.new(name)
       ctx.instance_eval(&block)
-      @fumes.add_context ctx
+      @fumes.contexts << ctx
     end
 
     def group(name, params={}, &block)

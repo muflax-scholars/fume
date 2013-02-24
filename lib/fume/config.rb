@@ -11,11 +11,8 @@ module Fume
                    end + "/../.."
       
       {
-        "fume_dir"  => "#{Dir.home}/fume",
-        "log"       => "fume.log",
-        "fumes"     => "fumes",
-        "beeminder" => "beeminder.yaml",
-        "signal"    => "#{signal_dir}/signal.wav",
+        "fume_dir"  => File.join(Dir.home, "fume"),
+        "signal"    => File.join(signal_dir, "signal.wav"),
       }
     end
 

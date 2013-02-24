@@ -6,95 +6,89 @@
 require "beeminder"
 require "chronic"
 require 'net/https'
-require "optparse"
 require "set"
+require "trollop"
 require "uri"
 
-begin
+# load library
+file = File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__
+lib = File.join File.dirname(file), "/../lib/fume"
+
+if File.exists? lib
+  # using local version
+  require lib
+else
   require 'fume'
-rescue LoadError
-  if File.symlink? __FILE__
-    require File.dirname(File.readlink(__FILE__)) + '/../lib/fume'
-  else
-    require File.dirname(__FILE__) + '/../lib/fume'
-  end
 end
 
-margin = Chronic.parse("1 hour ago")
+margin = "1 hour ago"
 
 # load configs
-options = {}
-OptionParser.new do |opts|
-  opts.banner = "usage: fume-beeminder [-f]"
+opts = Trollop::options do
+  banner "usage: fume-beeminder [opts]"
 
-  opts.on("-f", "--force", "force update") do |o|
-    options[:force] = o
-  end
-  opts.on("-d", "--debug", "debug") do |o|
-    options[:debug] = o
-  end
-  opts.on("-n", "--pretend", "pretend to send data") do |o|
-    options[:pretend] = o
-  end
-end.parse!
-bee_log = File.join(Fume::Config["fume_dir"], Fume::Config["beeminder"])
-yaml    = YAML::load(File.open(bee_log))
+  opt :force,   "force update"
+  opt :debug,   "debug mode"
+  opt :pretend, "pretend to send data"
+end
 
-# find unreported entries
-Fumetrap::CLI.args = Getopt::Declare.new("#{Fumetrap::CLI::USAGE}")
-Fumetrap::CLI.parse "all -s #{yaml["start"]}"
+bee_file = File.join(Fume::Config["fume_dir"], "beeminder.yaml")
+bee_conf = YAML::load(File.open(bee_file))
 
-puts "getting unreported entries..." if options[:debug]
-entries = Fumetrap::CLI.unreported_entries
-puts "found: #{entries.count}" if options[:debug]
+puts "loading fume data..." if opts[:debug]
+fumes = Fume::Fumes.new
+fumes.init
 
-if entries.count.zero?
-  puts "nothing to do..." if options[:debug]
+puts "getting unreported entries..." if opts[:debug]
+entries = fumes.unreported_entries
+entries.select! {|id, e| e[:start_time] >= bee_conf["start"]}
+
+puts "found: #{entries.count}" if opts[:debug]
+
+if entries.empty?
+  puts "nothing to do..." if opts[:debug]
   exit
 end
 
-# load fume data
-puts "loading fume data..." if options[:debug]
-fmt  = "%Y-%m-%d"
-fume = Fume::CLI.new
-fume.load_file
-fume.fumes.update_quotas(fume.fumes.filter_since yaml["start"].strftime(fmt))
-contexts = Set.new(fume.fumes.contexts.map(&:name))
+contexts = Set.new(fumes.contexts.map(&:name))
 
 # select entries in a valid context and not too new
-to_report = entries.to_a.reject {|entry| not contexts.include?(entry.sheet) or (entry.end >= margin and not options[:force])}
+to_report = entries.select do |id, e|
+  contexts.include?(e[:context]) and (e[:stop_time] <= fumes.parse_time(margin) or
+                                      opts[:force])
+end
 
 if to_report.empty?
-  puts "nothing to update (yet)..." if options[:debug]
+  puts "nothing to update (yet)..." if opts[:debug]
   exit
 end
 
 # build data for all goals
 data = {}
-yaml["goals"].each do |goal|
+bee_conf["goals"].each do |goal|
   # only use entries from certain contexts, if specified, or all otherwise
   allowed_contexts = goal["contexts"].nil? ? contexts : Set.new([*goal["contexts"]].flatten)
-  puts "to report for #{goal["name"]}:" if options[:debug]
+  puts "to report for #{goal["name"]}:" if opts[:debug]
 
-  valid = to_report.select {|e| allowed_contexts.include? e.sheet}
+  valid = to_report.select {|id, e| allowed_contexts.include? e[:context]}
   next if valid.empty?
 
   # we assume only cumulative goals
-  score = "%0.2f" % valid.reduce(0) do |score, entry|
-    puts "  -> #{entry.sheet}" if options[:debug]
+  score = "%0.2f" % valid.reduce(0) do |s, (id, e)|
+    puts "  -> #{e[:context]}" if opts[:debug]
     
     # build data point
-    score + case goal["type"]
+    s + case goal["type"]
             when "time"
-              entry.duration / (60.0*60.0)
+              (e[:stop_time] - e[:start_time] ) / (60.0*60.0)
             when "boxes"
               1
             else
               raise "unknown goal type"
             end
   end
-  date = valid.max_by{|e| e.start}.start
-  used_contexts = valid.map{|e| e.sheet}.uniq
+  date = valid.map{|id, e| e[:start_time]}.max
+  used_contexts = valid.map{|id, e| e[:context]}.uniq
   comment = "#{goal["name"]} update, context#{valid.size > 1 ? "s" : ""}: #{used_contexts.sort.join(", ")}"
 
   body = {
@@ -108,7 +102,7 @@ end
 
 # send data
 data.each do |goal, body|
-  if options[:pretend]
+  if opts[:pretend]
     puts "would send:"
     puts body
   else
@@ -123,8 +117,8 @@ data.each do |goal, body|
 end
 
 # save data
-puts "saving..." if options[:debug]
-to_report.each do |entry|
-  entry.reported!
-  entry.save unless options[:pretend]
+puts "saving..." if opts[:debug]
+to_report.each do |id, e|
+  fumes.entries[id][:reported] = true unless opts[:pretend]
 end
+fumes.save unless opts[:pretend]
