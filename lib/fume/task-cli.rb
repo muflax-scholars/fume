@@ -115,7 +115,7 @@ module Fume
       # let's make some sausage
       ctx_length = length_of_longest_in contexts
       
-      contexts.each_with_index do |ctx, i|
+      contexts.each.with_index(1) do |ctx, i|
         quota     = @fumes.quotas[ctx]
         timeboxes = @fumes.timeboxes[ctx]
         weight    = ctx.weight
@@ -158,7 +158,7 @@ module Fume
 
         puts "%{id} %{context} %{boxes} %{weight} %{performance}" %
          ({
-           id: HighLine.color("<%02d>" % (i + 1), :magenta),
+           id: HighLine.color("<%02d>" % (i), :magenta),
            context: HighLine.color("#{ctx}".center(ctx_length+1),
                                    living ? :white : :yellow),
            performance: HighLine.color("[#{performances}]",
@@ -300,6 +300,7 @@ module Fume
       
       id = ask("What item do you want? ", Integer) do |q|
         q.in = 1..@last_shown_contexts.size
+        q.limit = @last_shown_contexts.size.to_s.size
       end
       
       ctx = @last_shown_contexts[id - 1]
