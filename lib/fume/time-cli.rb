@@ -74,7 +74,7 @@ module Fume
       when "csv"
         show_csv entries
       when "status"
-        show_status entries
+        show_status
       else
         "invalid format: #{opts[:format]}"
       end
@@ -116,7 +116,7 @@ module Fume
         stop  = e[:stop_time]
         
         next_day = (last_day.nil? or (last_day != start.to_date))
-        same_day = (stop.to_date == start.to_date)
+        same_day = (stop.nil? or (stop.to_date == start.to_date))
 
         start_day  = format_date(start)
         start_time = format_time(start)
@@ -133,12 +133,12 @@ module Fume
           day_dur += secs
         end
           
-        puts "%{id} %{context}  %{from} -> %{till} (%{duration})" %
+        puts "%{id} %{context}  %{from} -(%{duration})-> %{till}" %
          ({
            id: HighLine.color("%5d)" % i, :magenta),
            context: HighLine.color("%-#{ctx_length}s" % e[:context], :yellow),
            from: "#{HighLine.color(start_day, next_day ? :white : :bright_black)} #{start_time}",
-           till: "#{stop_time} #{HighLine.color(stop_day, same_day ? :bright_black : :white)}",
+           till: stop.nil? ? "?" : "#{stop_time} #{HighLine.color(stop_day, same_day ? :bright_black : :white)}",
            duration: HighLine.color(format_secs(secs), :green),
           })
 
@@ -168,7 +168,7 @@ module Fume
       dzen_number = 100
 
       if @fumes.running?
-        running = @fumes.running_contexts.map.join(" | ")
+        running = @fumes.running_contexts.join(" | ")
         puts "#{dzen_number} B ^fg(#00ff00)#{running}^fg()"
       else
         puts "#{dzen_number} ^fg(#ff0000)unbound^fg()"

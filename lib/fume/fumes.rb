@@ -185,8 +185,8 @@ module Fume
       # add new entry
       entry_id = new_id
       entry    = {
-                  "context"    => context.name,
-                  "start_time" => start_time,
+                  :context    => context.name,
+                  :start_time => start_time,
                  }
       @entries[entry_id] = entry
       
@@ -194,7 +194,7 @@ module Fume
     end
 
     def new_id
-      (@entries.keys.max.to_i + 1).to_s
+      (@entries.keys.max || 0 ) + 1
     end
     
     def stop stop_time=nil
