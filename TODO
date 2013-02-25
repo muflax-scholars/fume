@@ -1,4 +1,3 @@
-* TODO [0/3]
+* TODO [0/2]
 - [ ] rating / notes on timeboxes
-- [ ] cache answers (requires switch to readline)
 - [ ] better output format so we don't have to call clear all the time
