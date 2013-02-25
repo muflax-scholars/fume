@@ -50,7 +50,7 @@ module Fume
     end
 
     def display opts={}
-      entries = @fumes.entries
+      entries = @fumes.entries.dup
 
       # filters
 
@@ -178,8 +178,6 @@ module Fume
       # print total time worked today
       puts "#{dzen_number} T #{format_secs(@fumes.quotas[:all][:today].to_i)}"
       dzen_number += 1
-
-      @fumes.save
     end
   end
 end
