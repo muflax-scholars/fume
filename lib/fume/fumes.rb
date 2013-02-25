@@ -118,8 +118,8 @@ module Fume
       # minimize the necessity of reloads
       @last_modified = File.ctime(@fume_db)
 
-      # update caches again if necessary
-      update_caches if modified
+      # update caches again (always necessary)
+      update_caches
     end
 
     def urgent_contexts
