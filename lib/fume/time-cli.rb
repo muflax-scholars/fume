@@ -93,7 +93,7 @@ module Fume
     end
     
     def show_csv entries
-      puts "context,start,stop,duration"
+      puts "id,context,start,stop,duration"
       entries.sort_by{|i, e| e[:start_time]}.each do |i, e|
         puts [
               i,
