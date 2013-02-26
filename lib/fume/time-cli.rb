@@ -74,7 +74,7 @@ module Fume
       when "csv"
         show_csv entries
       when "status"
-        show_status
+        show_status entries
       else
         "invalid format: #{opts[:format]}"
       end
@@ -165,7 +165,7 @@ module Fume
     end
     
 
-    def show_status
+    def show_status entries
       dzen_number = 100
 
       if @fumes.running?
@@ -177,7 +177,11 @@ module Fume
       dzen_number += 1
 
       # print total time worked today
-      puts "#{dzen_number} T #{format_secs(@fumes.quotas[:all][:today].to_i)}"
+      total = entries.reduce(0) do |s, (_, e)|
+        s + ((e[:stop_time].nil? ? Time.now : e[:stop_time]) - e[:start_time])
+      end.to_i
+      
+      puts "#{dzen_number} T #{format_secs(total)}"
       dzen_number += 1
     end
   end
