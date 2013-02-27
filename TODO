@@ -1,3 +1,5 @@
 * TODO [0/2]
 - [ ] rating / notes on timeboxes
 - [ ] better output format so we don't have to call clear all the time
+- [ ] needs to be faster
+- [ ] daemon mode for status line?
