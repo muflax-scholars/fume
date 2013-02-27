@@ -3,13 +3,18 @@ module Fume
     attr_accessor :name
     
     def initialize name
-      @name = name
-      @weight = 0
+      @name      = name
+      @weight    = 0
       @frequency = 0
+      @skipped   = false
     end
 
     def optional
       weight 0
+    end
+
+    def skip
+      @skipped = true
     end
     
     # stupid hack to make the DSL a bit simpler

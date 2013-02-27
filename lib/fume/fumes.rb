@@ -154,7 +154,13 @@ module Fume
     end
 
     def unreported_entries
-      @entries.reject {|id, e| e[:reported] || e[:stop_time].nil?}
+      skip_contexts = Set.new(@contexts.select{|c| c.skipped}.map(&:name))
+      
+      @entries.reject do |id, e|
+        e[:reported] or
+        e[:stop_time].nil? or
+        skip_contexts.include? e[:context]
+      end
     end
 
     def global_weight
