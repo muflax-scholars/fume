@@ -93,16 +93,22 @@ module Fume
     end
     
     def show_csv entries
-      puts "id,context,start,stop,duration"
-      entries.sort_by{|i, e| e[:start_time]}.each do |i, e|
-        puts [
-              i,
-              e[:context],
-              e[:start_time],
-              e[:stop_time],
-              (e[:stop_time].nil? ? Time.now : e[:stop_time]) - e[:start_time],
-             ].join(",")
-      end
+      contexts = entries.map{|_,e| e[:context]}.uniq.sort
+      earliest = entries.map{|_,e| e[:start_time].to_date}.min
+      latest   = entries.map{|_,e| (e[:stop_time] || Time.now).to_date}.max
+
+      puts "date,#{contexts.join(",")}"
+
+      earliest.upto(latest).each do |date|
+        es = entries.select{|_,e| e[:start_time].to_date == date}
+
+        t = Hash.new {|h,k| h[k] = 0}
+        es.each do |_, e|
+          t[e[:context]] += (e[:stop_time] || Time.now) - e[:start_time]
+        end
+
+        puts "#{date},#{contexts.map{|c| t[c] / 3600.0}.join(",")}"
+      end      
     end
 
     def show_text entries
@@ -163,7 +169,6 @@ module Fume
     def format_secs secs
       "%1dh%02dm%02ds" % [secs/3600, (secs%3600)/60, secs%60]
     end
-    
 
     def show_status entries
       dzen_number = 100
