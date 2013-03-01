@@ -154,12 +154,12 @@ module Fume
     end
 
     def unreported_entries
-      skip_contexts = Set.new(@contexts.select{|c| c.skipped}.map(&:name))
+      contexts = Set.new(@contexts.select{|c| c.report?}.map(&:name))
       
-      @entries.reject do |id, e|
-        e[:reported] or
-        e[:stop_time].nil? or
-        skip_contexts.include? e[:context]
+      @entries.select do |id, e|
+        not e[:reported] and
+        not e[:stop_time].nil? and
+        contexts.include? e[:context]
       end
     end
 

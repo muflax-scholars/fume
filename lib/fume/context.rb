@@ -16,6 +16,10 @@ module Fume
     def skip
       @skipped = true
     end
+
+    def report?
+      !@skipped
+    end
     
     # stupid hack to make the DSL a bit simpler
     def weight w=nil
