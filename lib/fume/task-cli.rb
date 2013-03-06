@@ -178,9 +178,9 @@ module Fume
         hours << "%7.1fh" % [@fumes.global_quota[time] / 3600.0]
       end
 
-      weight_color = if @fumes.global_weight > 250
+      weight_color = if @fumes.global_weight > 30 * 10
                        :bright_red
-                     elsif @fumes.global_weight >= 200
+                     elsif @fumes.global_weight >= 30 * 8
                        :yellow
                      else
                        :white
