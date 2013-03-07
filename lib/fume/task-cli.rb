@@ -186,8 +186,8 @@ module Fume
                        :white
                      end
 
-      total_boxes = @fumes.global_timeboxes[:today].size
-      total_frequency = contexts.reduce(0) {|s,c| s + c.frequency}
+      total_boxes = contexts.reduce(0) {|s,ctx| s + @fumes.timeboxes[ctx][:today].size}
+      total_frequency = contexts.reduce(0) {|s,ctx| s + ctx.frequency}
       
       puts "sum: #{" "*(ctx_length+1)} %{boxes} %{weight}h [#{hours.join ' | '}]" %
        ({
