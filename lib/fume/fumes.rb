@@ -176,10 +176,14 @@ module Fume
     end
 
     def sort_contexts_by_urgency
-      @contexts.sort_by! do |ctx|
-        # the more hours, the more important; otherwise go by weight, but avoid some determinism
-        [- necessary_for(ctx, :week), ctx.weight, rand]
+      # for now, we just give every context one "lottery ticket" per open timebox
+      @suggestions = []
+      @contexts.each do |ctx|
+        tickets = (ctx.frequency) - @timeboxes[ctx][:today].size
+        tickets.times {@suggestions << ctx}
       end
+
+      @suggestions.shuffle!
     end
 
     def start context, start_time=nil
@@ -234,7 +238,8 @@ module Fume
     
     def suggest_context
       # just go with most urgent entry for now
-      @contexts.first
+      sort_contexts_by_urgency if @suggestions.nil?
+      @suggestions.first
     end
 
     # how much time is necessary to fulfill the daily goal here?
