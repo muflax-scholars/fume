@@ -82,7 +82,13 @@ module Fume
 
     def now opts={}
       if @fumes.running?
-        puts "Running: #{@fumes.running_contexts.join(", ")}."
+        ctxs = @fumes.running_contexts
+        entries = @fumes.entries.select {|_ ,e| e[:start_time].to_date == Time.now.to_date and ctxs.include? e[:context]}
+        total = entries.reduce(0) do |s, (_, e)|
+          s + ((e[:stop_time] || Time.now) - e[:start_time])
+        end.to_i
+        
+        puts "Running: #{ctxs.join(", ")} (#{format_secs(total)})."
       else
         puts "No active contexts."
       end
