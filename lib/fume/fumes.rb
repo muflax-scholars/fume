@@ -242,11 +242,9 @@ module Fume
     def suggest_context
       sort_contexts_by_urgency if @suggestions.nil?
 
-      if @last_suggestion.nil?
-        # pull last suggestion from entries
-        name = @entries.values.max_by {|e| e[:start_time]}[:context]
-        @last_suggestion = @contexts.find {|ctx| ctx.name = name}
-      end
+      # pull last suggestion from entries
+      name = @entries.values.max_by {|e| e[:start_time]}[:context]
+      @last_suggestion = @contexts.find {|ctx| ctx.name = name}
 
       # just go with most urgent entry for now, but also look for an alternative
       a = @suggestions.first
