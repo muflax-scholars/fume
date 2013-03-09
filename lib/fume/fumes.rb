@@ -233,7 +233,10 @@ module Fume
         tickets.times {@suggestions << ctx}
       end
 
-      @suggestions.shuffle!
+      # make the shuffling predictable
+      prng = Random.new(@entries.values.max_by {|e| e[:start_time]}[:start_time].to_i)
+
+      @suggestions.shuffle! :random => prng
     end
 
     def suggest_context
