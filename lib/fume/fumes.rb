@@ -175,17 +175,6 @@ module Fume
       @timeboxes[:all]
     end
 
-    def sort_contexts_by_urgency
-      # for now, we just give every context one "lottery ticket" per open timebox
-      @suggestions = []
-      @contexts.each do |ctx|
-        tickets = (ctx.frequency) - @timeboxes[ctx][:today].size
-        tickets.times {@suggestions << ctx}
-      end
-
-      @suggestions.shuffle!
-    end
-
     def start context, start_time=nil
       start_time ||= Time.now
 
@@ -236,10 +225,34 @@ module Fume
       @running_entries.map{|id, e| e[:context]}.uniq.sort
     end
     
+    def sort_contexts_by_urgency
+      # for now, we just give every context one "lottery ticket" per open timebox
+      @suggestions = []
+      @contexts.each do |ctx|
+        tickets = (ctx.frequency) - @timeboxes[ctx][:today].size
+        tickets.times {@suggestions << ctx}
+      end
+
+      @suggestions.shuffle!
+    end
+
     def suggest_context
-      # just go with most urgent entry for now
       sort_contexts_by_urgency if @suggestions.nil?
-      @suggestions.first
+
+      if @last_suggestion.nil?
+        # pull last suggestion from entries
+        name = @entries.values.max_by {|e| e[:start_time]}[:context]
+        @last_suggestion = @contexts.find {|ctx| ctx.name = name}
+      end
+
+      # just go with most urgent entry for now, but also look for an alternative
+      a = @suggestions.first
+      b = @suggestions.find {|s| s != a}
+
+      # try to not suggest the same thing twice in a row
+      @last_suggestion = (@last_suggestion == a and not b.nil?) ? b : a
+
+      @last_suggestion
     end
 
     # how much time is necessary to fulfill the daily goal here?
