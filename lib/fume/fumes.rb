@@ -244,16 +244,16 @@ module Fume
 
       # pull last suggestion from entries
       name = @entries.values.max_by {|e| e[:start_time]}[:context]
-      @last_suggestion = @contexts.find {|ctx| ctx.name = name}
+      last_suggestion = @contexts.find {|ctx| ctx.name = name}
 
       # just go with most urgent entry for now, but also look for an alternative
       a = @suggestions.first
       b = @suggestions.find {|s| s != a}
 
       # try to not suggest the same thing twice in a row
-      @last_suggestion = (@last_suggestion == a and not b.nil?) ? b : a
+      suggestion = (last_suggestion == a and not b.nil?) ? b : a
 
-      @last_suggestion
+      suggestion
     end
 
     # how much time is necessary to fulfill the daily goal here?
