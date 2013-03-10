@@ -110,7 +110,7 @@ module Fume
        end.sort
 
       # remember selection for choose command
-      @last_shown_contexts = contexts 
+      @last_shown_contexts = contexts
 
       # let's make some sausage
       ctx_length = length_of_longest_in contexts

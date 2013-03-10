@@ -224,17 +224,21 @@ module Fume
     def running_contexts
       @running_entries.map{|id, e| e[:context]}.uniq.sort
     end
+
+    def last_entry
+      @entries.values.max_by {|e| e[:start_time]}
+    end
     
     def sort_contexts_by_urgency
       # for now, we just give every context one "lottery ticket" per open timebox
       @suggestions = []
       @contexts.each do |ctx|
-        tickets = (ctx.frequency) - @timeboxes[ctx][:today].size
+        tickets = ctx.frequency - @timeboxes[ctx][:today].size
         tickets.times {@suggestions << ctx}
       end
 
       # make the shuffling predictable
-      prng = Random.new(@entries.values.max_by {|e| e[:start_time]}[:start_time].to_i)
+      prng = Random.new(last_entry[:start_time].to_i)
 
       @suggestions.shuffle! :random => prng
     end
@@ -243,8 +247,8 @@ module Fume
       sort_contexts_by_urgency if @suggestions.nil?
 
       # pull last suggestion from entries
-      name = @entries.values.max_by {|e| e[:start_time]}[:context]
-      last_suggestion = @contexts.find {|ctx| ctx.name = name}
+      name = last_entry[:context]
+      last_suggestion = @contexts.find {|ctx| ctx.name == name}
 
       # just go with most urgent entry for now, but also look for an alternative
       a = @suggestions.first
