@@ -80,7 +80,7 @@ module Fume
     end
 
     def modified?
-      last_mod_time < @last_modified
+      last_mod_time > @last_modified
     end
     
     # write entries back to files
