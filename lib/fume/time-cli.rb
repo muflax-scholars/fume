@@ -11,24 +11,19 @@ module Fume
       id    = opts[:id] || @fumes.entries.keys.max
       entry = @fumes.entries[id]
 
-      # delete entry
       if opts[:kill]
-        @entries.delete id
-
-        puts "Deleted:"
-        show_text({id: entry})
-
-        return
+        # delete entry
+        @fumes.entries.delete id
+      else
+        # update entry
+        entry[:start_time] = opts[:start_time] unless opts[:start_time].nil?
+        entry[:stop_time]  = opts[:stop_time]  unless opts[:stop_time].nil?
       end
-
-      # update entry
-      entry[:start_time] = opts[:start_time] unless opts[:start_time].nil?
-      entry[:stop_time]  = opts[:stop_time]  unless opts[:stop_time].nil?
-
+        
       @fumes.save
 
-      puts "Edited:"
-      show_text({id: entry})
+      puts opts[:kill] ? "Deleted" : "Edited:"
+      show_text({id => entry})
     end
 
     def in opts={}
