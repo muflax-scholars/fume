@@ -15,5 +15,5 @@ Gem::Specification.new do |s|
   s.add_dependency("beeminder",      "~> 0.2")
   s.add_dependency("trollop",        "~> 2.0")
   s.add_dependency("highline",       "~> 1.6")
-  s.add_dependency("muflax-chronic", "~> 0.5")
+  s.add_dependency("muflax-chronic", "~> 0.6")
 end

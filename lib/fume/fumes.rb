@@ -132,7 +132,7 @@ module Fume
 
     def intervals
       {
-        today: parse_time("today 0:00"),
+        today: Date.today.to_time,
         week:  parse_time("7 days ago 0:00"),
         month: parse_time("30 days ago 0:00"),
         total: Time.new(0),

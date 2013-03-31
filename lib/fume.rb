@@ -1,5 +1,5 @@
 require "awesome_print"
-require "chronic"
+require "muflax-chronic"
 require "date"
 require "highline/import"
 require "socket"
