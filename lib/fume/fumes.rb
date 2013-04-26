@@ -31,6 +31,9 @@ module Fume
       if File.exist? @fumes_file
         dsl = Fume::DSL.new(self)
         dsl.instance_eval(File.read(@fumes_file), @fumes_file)
+        dsl.groups.each do |name, group|
+          @contexts += group.contexts
+        end
       end
 
       # load time database

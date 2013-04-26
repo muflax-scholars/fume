@@ -1,20 +1,37 @@
 module Fume
   class DSL
+    attr_reader :groups
+    
     def initialize fumes
       @fumes = fumes
+      @groups = Hash.new {|h,k| h[k] = Group.new(k)}
     end
-    
-    def context(name, params={}, &block)
-      raise ArgumentError.new("#context requires a block") unless block_given?
 
-      ctx = Fume::Context.new(name)
-      ctx.instance_eval(&block)
-      @fumes.contexts << ctx
+    def context(name, params={}, &block)
+      # assign context to standard group
+      @groups["default"].context(name, params, &block)
     end
 
     def group(name, params={}, &block)
       raise ArgumentError.new("#group requires a block") unless block_given?
-      instance_eval(&block)
+      @groups[name].instance_eval(&block)
+    end
+  end
+
+  class Group
+    attr_accessor :name, :contexts
+
+    def initialize name
+      @name     = name
+      @contexts = []
+    end
+
+    def context(name, params={}, &block)
+      raise ArgumentError.new("#context requires a block") unless block_given?
+
+      ctx = Fume::Context.new(name, self)
+      ctx.instance_eval(&block)
+      @contexts << ctx
     end
   end
 end

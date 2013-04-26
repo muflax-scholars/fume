@@ -1,9 +1,10 @@
 module Fume
   class Context
-    attr_accessor :name
+    attr_accessor :name, :group
     
-    def initialize name
+    def initialize name, group
       @name      = name
+      @group     = group
       @weight    = 0
       @frequency = 0
       @skipped   = false

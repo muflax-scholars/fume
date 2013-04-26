@@ -4,7 +4,7 @@
 # cron job. Pay for dreeves' hookers.
 
 require "beeminder"
-require "chronic"
+require "muflax-chronic"
 require 'net/https'
 require "set"
 require "trollop"
@@ -67,7 +67,18 @@ end
 data = {}
 bee_conf["goals"].each do |goal|
   # only use entries from certain contexts, if specified, or all otherwise
-  allowed_contexts = goal["contexts"].nil? ? contexts : Set.new([*goal["contexts"]].flatten)
+  allowed_contexts = Set.new
+  if not goal["contexts"].nil?
+    allowed_contexts += [*goal["contexts"]].flatten
+  end
+  if not goal["groups"].nil?
+    groups = [*goal["groups"]].flatten
+    fumes.contexts.each do |ctx|
+      allowed_contexts << ctx.name if groups.include? ctx.group.name
+    end
+  end
+  allowed_contexts = contexts if allowed_contexts.empty?
+  puts "#{goal["name"]} allows: #{allowed_contexts.sort.join(", ")}" if opts[:debug]
   puts "to report for #{goal["name"]}:" if opts[:debug]
 
   valid = to_report.select {|id, e| allowed_contexts.include? e[:context]}
