@@ -107,69 +107,80 @@ module Fume
          [filter]
        else
          @fumes.contexts
-       end.sort
+       end
+      groups = contexts.group_by{|ctx| ctx.group}
 
       # remember selection for choose command
-      @last_shown_contexts = contexts
+      @last_shown_contexts = []
 
       # let's make some sausage
-      ctx_length = length_of_longest_in contexts
-      
-      contexts.each.with_index(1) do |ctx, i|
-        quota     = @fumes.quotas[ctx]
-        timeboxes = @fumes.timeboxes[ctx]
-        weight    = ctx.weight
-        target    = weight.to_f / @fumes.global_weight
+      ctx_length = length_of_longest_in(contexts)
+      i = 0
 
-        boxes  = timeboxes[:today].size
-        living = (boxes >= ctx.frequency)
+      groups.keys.sort_by{|g| g.name}.each do |group|
+        puts
+        puts "#{HighLine.color("<-->", :magenta)} #{group.name}:"
+        groups[group].sort.each do |ctx|
+          quota     = @fumes.quotas[ctx]
+          timeboxes = @fumes.timeboxes[ctx]
+          weight    = ctx.weight
+          target    = weight.to_f / @fumes.global_weight
+          i        += 1
 
-        ratios      = {}
-        necessaries = {}
-        @fumes.times.each do |time|
-          # total worked time
-          ratio = unless @fumes.global_quota[time].zero?
-                    (quota[time].to_f / @fumes.global_quota[time])
-                  else
-                    0.0
-                  end
-          diff = ratio / target
-          rat_color = if target.zero?
-                        :white
-                      elsif diff > 0.8
-                        :green
-                      elsif diff > 0.5
-                        :yellow
-                      else
-                        :red
-                      end
-          ratios[time] = HighLine.color("%3.0f%%" % [ratio * 100], rat_color)
+          # remember order
+          @last_shown_contexts << ctx
+
           
-          # How many hours do I have to add to make the target?
-          necessary = @fumes.necessary_for(ctx, time) / 3600.0
-          necessaries[time] = HighLine.color((necessary.abs < 9.96 ? # rounded to 10.0
-                                              "%+4.1f" % necessary :
-                                              "%+4.0f" % necessary),
-                                             :white)
-        end
-        
-        
-        performances = @fumes.times.map{|t| "#{ratios[t]}#{necessaries[t]}"}.join ' | '
+          boxes  = timeboxes[:today].size
+          living = (boxes >= ctx.frequency)
 
-        puts "%{id} %{context} %{boxes} %{weight} %{performance}" %
-         ({
-           id: HighLine.color("<%02d>" % (i), :magenta),
-           context: HighLine.color("#{ctx}".center(ctx_length+1),
-                                   living ? :white : :yellow),
-           performance: HighLine.color("[#{performances}]",
-                                       :white),
-           target: HighLine.color("%3.0f%%" % (target*100),
-                                  :white),
-           weight: HighLine.color("%3dh" % (weight),
-                                  :white),
-           boxes: HighLine.color("[%2d/%2d]" % [boxes, ctx.frequency],
-                                 living ? :white : :red),
-          })
+          ratios      = {}
+          necessaries = {}
+          @fumes.times.each do |time|
+            # total worked time
+            ratio = unless @fumes.global_quota[time].zero?
+                      (quota[time].to_f / @fumes.global_quota[time])
+                    else
+                      0.0
+                    end
+            diff = ratio / target
+            rat_color = if target.zero?
+                          :white
+                        elsif diff > 0.8
+                          :green
+                        elsif diff > 0.5
+                          :yellow
+                        else
+                          :red
+                        end
+            ratios[time] = HighLine.color("%3.0f%%" % [ratio * 100], rat_color)
+            
+            # How many hours do I have to add to make the target?
+            necessary = @fumes.necessary_for(ctx, time) / 3600.0
+            necessaries[time] = HighLine.color((necessary.abs < 9.96 ? # rounded to 10.0
+                                                "%+4.1f" % necessary :
+                                                "%+4.0f" % necessary),
+                                               :white)
+          end
+          
+          
+          performances = @fumes.times.map{|t| "#{ratios[t]}#{necessaries[t]}"}.join ' | '
+
+          puts "%{id} %{context} %{boxes} %{weight} %{performance}" %
+           ({
+             id: HighLine.color("<%02d>" % (i), :magenta),
+             context: HighLine.color(" #{ctx}".ljust(ctx_length+1),
+                                     living ? :white : :yellow),
+             performance: HighLine.color("[#{performances}]",
+                                         :white),
+             target: HighLine.color("%3.0f%%" % (target*100),
+                                    :white),
+             weight: HighLine.color("%3dh" % (weight),
+                                    :white),
+             boxes: HighLine.color("[%2d/%2d]" % [boxes, ctx.frequency],
+                                   living ? :white : :red),
+            })
+        end
       end
 
       # summary
@@ -302,7 +313,7 @@ module Fume
         q.in = 1..@last_shown_contexts.size
         q.limit = @last_shown_contexts.size.to_s.size
       end
-      
+
       ctx = @last_shown_contexts[id - 1]
 
       ctx
