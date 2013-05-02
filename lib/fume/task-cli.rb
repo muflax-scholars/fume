@@ -118,7 +118,6 @@ module Fume
       i = 0
 
       groups.keys.sort_by{|g| g.name}.each do |group|
-        puts
         puts "#{HighLine.color("<-->", :magenta)} #{group.name}:"
         groups[group].sort.each do |ctx|
           quota     = @fumes.quotas[ctx]
