@@ -26,6 +26,9 @@ module Fume
     end
     
     def load_files
+      # note the time
+      @last_modified = last_mod_time
+      
       # parse DSL of fumes file for context
       @contexts = []
       if File.exist? @fumes_file
