@@ -120,7 +120,7 @@ module Fume
           weight      = ctx.weight
           target      = weight.to_f / @fumes.global_weight
           i          += 1
-          urgent      = ctx.weight.zero?
+          urgent      = ctx.weight > 0
           performance = performance_for ctx
           
           # remember order
