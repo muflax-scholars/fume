@@ -84,21 +84,26 @@ bee_conf["goals"].each do |goal|
   valid = to_report.select {|id, e| allowed_contexts.include? e[:context]}
   next if valid.empty?
 
-  # we assume only cumulative goals
-  score = "%0.2f" % valid.reduce(0) do |s, (id, e)|
+  # build data point; we assume only cumulative goals
+  date  = valid.map{|id, e| e[:start_time]}.max
+  score = "%0.2f" % 
+   case goal["type"]
+   when "time"
+     valid.reduce(0) do |s, (id, e)|
+       s + ((e[:stop_time] - e[:start_time] ) / (60.0*60.0))
+     end
+   when "boxes"
+     valid.size
+   when "total"
+     # FIXME respect contexts
+     fumes.durations[:all][date.to_date] / (60.0*60.0)
+   else
+     raise "unknown goal type"
+   end
+  valid.each do |_, e|
     puts "  -> #{e[:context]}" if opts[:debug]
-    
-    # build data point
-    s + case goal["type"]
-            when "time"
-              (e[:stop_time] - e[:start_time] ) / (60.0*60.0)
-            when "boxes"
-              1
-            else
-              raise "unknown goal type"
-            end
   end
-  date = valid.map{|id, e| e[:start_time]}.max
+  
   used_contexts = valid.map{|id, e| e[:context]}.uniq
   comment = "#{goal["name"]} update, context#{valid.size > 1 ? "s" : ""}: #{used_contexts.sort.join(", ")}"
 
