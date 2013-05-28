@@ -15,10 +15,6 @@ module Fume
     end
 
     def init_commands
-      add_command "suggestion" do
-        suggest
-      end
-      
       add_command "choose" do
         ctx = choose_context
         work_on ctx
@@ -120,74 +116,30 @@ module Fume
       groups.keys.sort_by{|g| g.name}.each do |group|
         puts "#{HighLine.color("<-->", :magenta)} #{group.name}:"
         groups[group].sort.each do |ctx|
-          quota     = @fumes.quotas[ctx]
-          timeboxes = @fumes.timeboxes[ctx]
-          weight    = ctx.weight
-          target    = weight.to_f / @fumes.global_weight
-          i        += 1
-
+          boxes       = @fumes.timeboxes[ctx][Date.today].size
+          weight      = ctx.weight
+          target      = weight.to_f / @fumes.global_weight
+          i          += 1
+          urgent      = ctx.weight.zero?
+          performance = performance_for ctx
+          
           # remember order
           @last_shown_contexts << ctx
-
-          
-          boxes  = timeboxes[:today].size
-          living = (boxes >= ctx.frequency)
-
-          ratios      = {}
-          necessaries = {}
-          @fumes.times.each do |time|
-            # total worked time
-            ratio = unless @fumes.global_quota[time].zero?
-                      (quota[time].to_f / @fumes.global_quota[time])
-                    else
-                      0.0
-                    end
-            diff = ratio / target
-            rat_color = if target.zero?
-                          :white
-                        elsif diff > 0.8
-                          :green
-                        elsif diff > 0.5
-                          :yellow
-                        else
-                          :red
-                        end
-            ratios[time] = HighLine.color("%3.0f%%" % [ratio * 100], rat_color)
-            
-            # How many hours do I have to add to make the target?
-            necessary = @fumes.necessary_for(ctx, time) / 3600.0
-            necessaries[time] = HighLine.color((necessary.abs < 9.96 ? # rounded to 10.0
-                                                "%+4.1f" % necessary :
-                                                "%+4.0f" % necessary),
-                                               :white)
-          end
-          
-          
-          performances = @fumes.times.map{|t| "#{ratios[t]}#{necessaries[t]}"}.join ' | '
 
           puts "%{id} %{context} %{boxes} %{weight} %{performance}" %
            ({
              id: HighLine.color("<%02d>" % (i), :magenta),
-             context: HighLine.color(" #{ctx}".ljust(ctx_length+1),
-                                     living ? :white : :yellow),
-             performance: HighLine.color("[#{performances}]",
-                                         :white),
-             target: HighLine.color("%3.0f%%" % (target*100),
-                                    :white),
-             weight: HighLine.color("%3dh" % (weight),
-                                    :white),
-             boxes: HighLine.color("[%2d/%2d]" % [boxes, ctx.frequency],
-                                   living ? :white : :red),
+             context: HighLine.color(" #{ctx}".ljust(ctx_length+1), urgent ? :yellow : :white),
+             performance: HighLine.color("[#{performance}]", :white),
+             target: HighLine.color("%3.0f%%" % (target*100), :white),
+             weight: HighLine.color("%3dh" % (weight), :white),
+             boxes: HighLine.color("[%2d]" % boxes, boxes.zero? ? :bright_black : :red),
             })
         end
       end
 
       # summary
-      hours = []
-      @fumes.times.each do |time|
-        hours << "%7.1fh" % [@fumes.global_quota[time] / 3600.0]
-      end
-
+      performance  = performance_for :all
       weight_color = if @fumes.global_weight > 30 * 10
                        :bright_red
                      elsif @fumes.global_weight >= 30 * 8
@@ -196,14 +148,13 @@ module Fume
                        :white
                      end
 
-      total_boxes = contexts.reduce(0) {|s,ctx| s + @fumes.timeboxes[ctx][:today].size}
-      total_frequency = contexts.reduce(0) {|s,ctx| s + ctx.frequency}
+      total_boxes = contexts.reduce(0) {|s,ctx| s + @fumes.timeboxes[ctx][Date.today].size}
       
-      puts "sum: #{" "*(ctx_length+1)} %{boxes} %{weight}h [#{hours.join ' | '}]" %
+      puts "sum: #{" "*(ctx_length+1)} %{boxes} %{weight} %{performance}" %
        ({
-         boxes: HighLine.color("[%2d/%2d]" % [total_boxes, total_frequency],
-                               total_boxes < total_frequency ? :red : :white),
-         weight: HighLine.color("%3d" % @fumes.global_weight, weight_color),
+         boxes: HighLine.color("[%2d]" % total_boxes, total_boxes.zero? ? :bright_black : :red),
+         weight: HighLine.color("%3dh" % @fumes.global_weight, weight_color),
+         performance: HighLine.color("[#{performance}]", :white),
         })
 
       if @fumes.running?
@@ -211,6 +162,48 @@ module Fume
         puts
         puts "In the net: #{contexts.map{|ctx| color_context(ctx)}.join(", ")}"
       end
+    end
+
+    # returns [hours, percentile]
+    def performance_for context
+      durs = @fumes.durations[context]
+      
+      durations   = {}
+      percentiles = {}
+      @fumes.intervals.each do |time, interval|
+        cutoff_day = interval == Date.today ? (Date.today - 1) : interval
+         
+        dur_before = durs.select do |day, dur|
+          day >= cutoff_day and day < Date.today
+        end.values
+        dur_today = durs[Date.today]
+
+        # total worked hours in this interval
+        duration = dur_before.reduce(0, :+) + dur_today
+
+        # how much better are we, compared to the other days in this interval?
+        days = (Date.today - cutoff_day).to_i
+        percentile = (days - dur_before.count{|d| d > dur_today}).to_f / days
+
+        dur_color = duration.zero? ? :bright_black : :white
+        per_color = if percentile == 1 and duration.zero?
+                      :bright_black
+                    elsif percentile >= 0.90
+                      :green
+                    elsif percentile > 0.66
+                      :white
+                    elsif percentile > 0.33
+                      :yellow
+                    else
+                      :red
+                    end
+        durations[time]   = HighLine.color("%6.1fh"  % (duration / 3600.0), dur_color)
+        percentiles[time] = HighLine.color("%3.0f%%" % (percentile * 100),  per_color)
+      end
+      
+      performance = @fumes.times.map{|t| "#{durations[t]}#{percentiles[t]}"}.join ' | '
+
+      performance
     end
 
     def length_of_longest_in(list)
@@ -252,10 +245,7 @@ module Fume
     end
     
     def question_me
-      show_suggestion unless @fumes.running?
-
       prompt = [
-                :suggestion,
                 :choose,
                 :list,
                 :list_all,
@@ -280,29 +270,6 @@ module Fume
       HighLine.color("#{ctx}", :yellow)
     end
 
-    def suggest
-      # pick a context to work on, then suggest bawkses
-      ctx = @fumes.suggest_context
-
-      if ctx.nil?
-        puts "Nothing to do. Sorry."
-        return
-      end
-
-      puts "Urgency detection module suggests #{color_context(ctx)}."
-      show_todo ctx
-      work_on ctx
-    end
-
-    def show_suggestion
-      # grab new data
-      reload
-
-      ctx = @fumes.suggest_context
-      puts
-      puts "Fish spotted: #{color_context(ctx)}"
-    end
-    
     def choose_context
       if @last_shown_contexts.empty? # have never shown anything, so do it now
         show_contexts :urgent

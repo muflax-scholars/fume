@@ -1,6 +1,6 @@
 module Fume
   class Fumes
-    attr_accessor :contexts, :quotas, :timeboxes, :entries, :running_entries
+    attr_accessor :contexts, :durations, :timeboxes, :entries, :running_entries
     
     def initialize
       # load db
@@ -22,7 +22,6 @@ module Fume
     def init
       load_files
       update_caches
-      sort_contexts_by_urgency
     end
     
     def load_files
@@ -50,25 +49,24 @@ module Fume
     end
 
     def update_caches
-      # caches; quotas are summarized timeboxes, format is h[context][time]
+      # caches; format is h[context][day]
       @timeboxes = Hash.new {|h1,k1| h1[k1] = Hash.new {|h2,k2| h2[k2] = []}}
-      @quotas    = Hash.new {|h1,k1| h1[k1] = Hash.new {|h2,k2| h2[k2] = 0}}
+      @durations = Hash.new {|h1,k1| h1[k1] = Hash.new {|h2,k2| h2[k2] = 0}}
 
       # cache for each context and time
       @contexts.each do |ctx|
-        entries = @entries.values.select {|e| e[:context] == ctx.name}
-        intervals.each do |time_name, time|
-          timeboxes = entries.select{|e| e[:start_time] >= time and not e[:stop_time].nil?}
-          durations = timeboxes.map{|e| e[:stop_time] - e[:start_time]}
-          quota     = durations.reduce(:+) || 0
+        entries = @entries.values.select {|e| e[:context] == ctx.name and not e[:stop_time].nil?}
+        entries.each do |entry|
+          day      = entry[:start_time].to_date
+          duration = entry[:stop_time] - entry[:start_time]
           
           # context cache
-          @timeboxes[ctx][time_name] = durations
-          @quotas[ctx][time_name]    = quota
+          @timeboxes[ctx][day] << entry
+          @durations[ctx][day] += duration
 
           # global cache
-          @timeboxes[:all][time_name] += durations
-          @quotas[:all][time_name]    += quota
+          @timeboxes[:all][day] << entry
+          @durations[:all][day] += duration
         end
       end
 
@@ -132,16 +130,12 @@ module Fume
       @contexts.select{|ctx| ctx.weight > 0}
     end
 
-    def dying_contexts
-      urgent_contexts.select{|ctx| @timeboxes[ctx][:today].size < ctx.frequency}
-    end
-
     def intervals
       {
-        today: Date.today.to_time,
-        week:  parse_time("7 days ago 0:00"),
-        month: parse_time("30 days ago 0:00"),
-        total: Time.new(0),
+        today: Date.today,
+        week:  parse_time("7 days ago   0:00").to_date,
+        month: parse_time("30 days ago  0:00").to_date,
+        total: parse_time("365 days ago 0:00").to_date,
       }
     end
 
@@ -173,8 +167,8 @@ module Fume
       contexts.reduce(0) {|sum, ctx| sum + ctx.weight}
     end
 
-    def global_quota
-      @quotas[:all]
+    def global_duration
+      @durations[:all]
     end
 
     def global_timeboxes
@@ -233,53 +227,6 @@ module Fume
 
     def last_entry
       @entries.values.max_by {|e| e[:start_time]}
-    end
-    
-    def sort_contexts_by_urgency
-      # for now, we just give every context one "lottery ticket" per open timebox
-      @suggestions = []
-      @contexts.each do |ctx|
-        tickets = ctx.frequency - @timeboxes[ctx][:today].size
-        tickets.times {@suggestions << ctx}
-      end
-
-      # make the shuffling predictable
-      prng = Random.new(last_entry[:start_time].to_i)
-
-      @suggestions.shuffle! :random => prng
-    end
-
-    def suggest_context
-      sort_contexts_by_urgency if @suggestions.nil?
-
-      # pull last suggestion from entries
-      name = last_entry[:context]
-      last_suggestion = @contexts.find {|ctx| ctx.name == name}
-
-      # just go with most urgent entry for now, but also look for an alternative
-      a = @suggestions.first
-      b = @suggestions.find {|s| s != a}
-
-      # try to not suggest the same thing twice in a row
-      suggestion = (last_suggestion == a and not b.nil?) ? b : a
-
-      suggestion
-    end
-
-    # how much time is necessary to fulfill the daily goal here?
-    def necessary_for context, time
-      quota  = @quotas[context]
-      weight = context.weight
-      target = weight.to_f / global_weight
-
-      needed_to_balance(quota[time], target, global_quota[time])
-    end
-
-    def needed_to_balance time, target, total
-      # formula: r = q / g =?= t
-      #       => q+c / g+c = t
-      #       => c = (q - (g*t)) / (t-1) [thanks Wolfram Alpha!]
-      (time - (target * total)) / ((target-1))
     end
   end
 end
