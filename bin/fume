@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 
+require "trollop"
+
 # load library
 file = File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__
 lib = File.join File.dirname(file), "/../lib/fume"
@@ -11,5 +13,14 @@ else
   require 'fume'
 end
 
+opts = Trollop::options do
+  banner "fume [opts]"
+  opt :todo, "Just show todo once and exit."
+end
+
 fume = Fume::TaskCLI.new
-fume.run
+if opts[:todo]
+  fume.show_todo :urgent
+else
+  fume.run
+end
