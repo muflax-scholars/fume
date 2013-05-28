@@ -139,6 +139,23 @@ module Fume
       end
 
       # summary
+      total_boxes = contexts.reduce(0) {|s,ctx| s + @fumes.timeboxes[ctx][Date.today].size}
+
+      # average of all columns
+      performance = average_for :all
+      puts "avg: #{" "*(ctx_length+1+10)} %{performance}" %
+       ({
+         performance: HighLine.color("[#{performance}]", :white),
+        })
+
+      # best day in colums
+      performance = best_for :all
+      puts "max: #{" "*(ctx_length+1+10)} %{performance}" %
+       ({
+         performance: HighLine.color("[#{performance}]", :white),
+        })
+
+      # sum of all colums
       performance  = performance_for :all
       weight_color = if @fumes.global_weight > 30 * 10
                        :bright_red
@@ -148,8 +165,6 @@ module Fume
                        :white
                      end
 
-      total_boxes = contexts.reduce(0) {|s,ctx| s + @fumes.timeboxes[ctx][Date.today].size}
-      
       puts "sum: #{" "*(ctx_length+1)} %{boxes} %{weight} %{performance}" %
        ({
          boxes: HighLine.color("[%2d]" % total_boxes, total_boxes.zero? ? :bright_black : :red),
@@ -157,6 +172,7 @@ module Fume
          performance: HighLine.color("[#{performance}]", :white),
         })
 
+      # show what's currently being worked on
       if @fumes.running?
         contexts = @fumes.running_contexts
         puts
@@ -164,22 +180,16 @@ module Fume
       end
     end
 
-    # returns [hours, percentile]
     def performance_for context
-      durs = @fumes.durations[context]
-      
       durations   = {}
       percentiles = {}
       @fumes.intervals.each do |time, interval|
         cutoff_day = interval == Date.today ? (Date.today - 1) : interval
-         
-        dur_before = durs.select do |day, dur|
-          day >= cutoff_day and day < Date.today
-        end.values
-        dur_today = durs[Date.today]
+        dur_before = @fumes.durations_within(context, cutoff_day, Date.today)
+        dur_today  = @fumes.durations[context][Date.today]
 
         # total worked hours in this interval
-        duration = dur_before.reduce(0, :+) + dur_today
+        duration = dur_today + (interval == Date.today ? 0 : dur_before.reduce(0, :+))
 
         # how much better are we, compared to the other days in this interval?
         days = (Date.today - cutoff_day).to_i
@@ -206,6 +216,43 @@ module Fume
       performance
     end
 
+    def average_for context
+      averages   = {}
+      @fumes.intervals.each do |time, interval|
+        cutoff_day = interval == Date.today ? (Date.today - 1) : interval
+        dur_before = @fumes.durations_within(context, cutoff_day, Date.today)
+        dur_today  = @fumes.durations[context][Date.today]
+        
+        # average worked hours in this interval
+        days           = (Date.today - cutoff_day).to_i
+        average        = dur_before.reduce(0.0, :+).to_f / days
+        avg_color      = dur_today > average ? :white : :bright_black
+        averages[time] = HighLine.color("%6.1fh" % (average / 3600.0), avg_color)
+      end
+      
+      performance = @fumes.times.map{|t| "#{averages[t]}#{" " * 4}"}.join ' | '
+
+      performance
+    end
+
+    def best_for context
+      bests = {}
+      @fumes.intervals.each do |time, interval|
+        cutoff_day = interval == Date.today ? (Date.today - 1) : interval
+        dur_before = @fumes.durations_within(context, cutoff_day, Date.today)
+        dur_today  = @fumes.durations[context][Date.today]
+        
+        # average worked hours in this interval
+        best         = dur_before.max
+        best_color   = dur_today > best ? :white : :bright_black
+        bests[time] = HighLine.color("%6.1fh" % (best / 3600.0), best_color)
+      end
+      
+      performance = @fumes.times.map{|t| "#{bests[t]}#{" " * 4}"}.join ' | '
+
+      performance
+    end
+    
     def length_of_longest_in(list)
       list.max do |a, b| 
         a.to_s.length <=> b.to_s.length

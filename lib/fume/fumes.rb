@@ -144,6 +144,12 @@ module Fume
         @timeboxes[ctx][date].empty?
       end
     end
+
+    def durations_within context, lower, upper=nil
+      @durations[context].select do |day, dur|
+        day >= lower and (upper.nil? ? true : day < upper)
+      end.values
+    end
     
     def times
       intervals.keys
