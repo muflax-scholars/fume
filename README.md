@@ -1,4 +1,4 @@
-fume aka future_me, a birthline / goal suggester
+fume aka future_me, a time tracking / goal suggesting thingie
 
 Features
 ========
@@ -18,7 +18,7 @@ Quoting myself:
 
 -- http://lesswrong.com/lw/7z1/antiakrasia_tool_like_stickkcom_for_data_nerds/4zey
 
-That's how it works, anyway. If I ever find the time, I might explain it some more.
+That's how it used to work, anyway. If I ever find the time, I might explain it some more.
 
 Requirements
 ============
@@ -32,8 +32,33 @@ Requirements
 Installation
 ============
 
-TODO in some future age
+Either as a gem:
 
+    (sudo) gem install future_me
+
+Or manually:
+
+    # first install the requirements
+    (sudo) gem install awesome_print highline muflax-chronic
+
+    # then fume itself
+    git clone https://github.com/muflax/fume.git
+    cd fume
+    (sudo) rake install
+    
+    # and finally get an example fumes file
+    cd ..
+    git clone https://gist.github.com/e2e6c6ef701f48d6270e.git fumes
+    cp fumes/fumes ~/fume/
+
+    # run fume
+    fume 
+
+You can also use Beeminder integration by setting up [the beeminder gem](https://github.com/beeminder/beeminder-gem) and adding a `beeminder.yaml`, like so:
+
+    git clone https://gist.github.com/muflax/5269db2ca5f80957746b fume-beeminder
+    cp fume-beeminder/beeminder.yaml ~/fume
+    
 TODO
 ====
 
@@ -41,3 +66,8 @@ TODO
 - explain config
 - screenshot
 - use status: http://beta.beeminder.com/muflax/goals/fume.json
+
+Thanks
+======
+
+- [Ben Eills](https://github.com/beneills) for install documentation and actually using the tool
