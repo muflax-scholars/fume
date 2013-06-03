@@ -243,7 +243,7 @@ module Fume
         dur_today  = @fumes.durations[context][Date.today]
         
         # average worked hours in this interval
-        best         = dur_before.max
+        best         = dur_before.max || 0
         best_color   = dur_today > best ? :white : :bright_black
         bests[time] = HighLine.color("%6.1fh" % (best / 3600.0), best_color)
       end
