@@ -9,7 +9,9 @@ module Fume
       
       @last_shown_contexts = []
       @last_modified       = Time.new(0)
-      
+
+      @upload_state = :none
+
       @commands = {}
       init_commands
     end
@@ -25,8 +27,16 @@ module Fume
       end
 
       add_command "upload" do
-        print "Contacting HQ..."
-        system "fume-beeminder -f" and puts " done."
+        if @upload_state == :working
+          # This error won't be usually visible, due to `clear` call
+          # Doesn't really matter, since stderr gets outputted
+          #   so it will be obvious if the external script fails
+          print "Upload already in progress!"
+        else
+          thr = Thread.new {
+            upload_synchronously
+          }
+        end
 
         show_contexts :urgent
       end
@@ -89,7 +99,16 @@ module Fume
     end
 
     def show_todo filter=:all
-      puts "  -> Incoming transmission! <-"
+      print "  -> Incoming transmission! <-    "
+      case @upload_state
+      when :working
+        #{HighLine.color("<-->", :magenta)}
+        print HighLine.color("[upload in progress]", :yellow)
+      when :completed
+        print HighLine.color("[upload complete]", :green)
+        @upload_state = :none
+      end
+      puts
 
       # grab new data
       reload
@@ -437,6 +456,12 @@ module Fume
       puts "#{HighLine.color("  -> BZZZ <-", :red)}\a"
 
       show_contexts :urgent
+    end
+
+    def upload_synchronously
+      @upload_state = :working
+      system "fume-beeminder -f"
+      @upload_state = :completed
     end
   end
 end
