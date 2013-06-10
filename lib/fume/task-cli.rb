@@ -370,7 +370,7 @@ module Fume
         end
 
         unless time.empty?
-          @entries.running_entries.each do |id, e|
+          @fumes.running_entries.each do |id, e|
             @fumes.edit id, :start_time => time
           end
         end
