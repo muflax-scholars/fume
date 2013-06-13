@@ -2,7 +2,7 @@ module Fume
   class Context
     attr_accessor :name, :group
     
-    def initialize name, group
+    def initialize name, group=""
       @name      = name
       @group     = group
       @weight    = 0

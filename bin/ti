@@ -59,7 +59,7 @@ cmd_opts = Trollop::options do
   
   if %w{edit}.include? cmd
     opt :kill, "kill item"
-    opt :id,   "id of item (last by default)"
+    opt :id,   "id of item (last by default)", :type => :string
   end
 
   if %w{display}.include? cmd
