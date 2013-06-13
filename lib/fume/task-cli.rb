@@ -96,16 +96,17 @@ module Fume
     end
 
     def show_todo filter=:all
-      print "  -> Incoming transmission! <-    "
-      case @upload_state
-      when :working
-        #{HighLine.color("<-->", :magenta)}
-        print HighLine.color("[upload in progress]", :yellow)
-      when :completed
-        print HighLine.color("[upload complete]", :green)
-        @upload_state = :none
-      end
-      puts
+      # show upload status
+      upload_msg = case @upload_state
+                   when :working
+                     HighLine.color("[upload in progress]", :yellow)
+                   when :completed
+                     # reset state now that we've shown it
+                     @upload_state = :none 
+                     HighLine.color("[upload complete]", :green)
+                   end
+      
+      puts "  -> Incoming transmission! <-  #{upload_msg}"
 
       # grab new data
       reload
