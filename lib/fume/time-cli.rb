@@ -8,7 +8,28 @@ module Fume
     end
     
     def edit opts={}
-      id    = opts[:id] || @fumes.entries.keys.max
+      selected_id = opts[:id].to_s || @fumes.last_id
+      ids = @fumes.entries.keys
+
+      # first, check for an exact match
+      match = ids.find {|id| id.to_s == selected_id}
+
+      if match.nil?
+        # treat id as prefix, like git
+        ids.select! {|id| id.to_s.start_with? selected_id.to_s}
+
+        if ids.empty?
+          puts "invalid id '#{selected_id}', no entry found..."
+          exit 1
+        elsif ids.size > 1
+          puts "multiple matching ids: #{ids.join(", ")}, be more precise"
+          exit 1
+        end
+
+        match = ids.first
+      end
+        
+      id    = match
       entry = @fumes.entries[id]
 
       if opts[:kill]
@@ -65,7 +86,7 @@ module Fume
       # print entries
       case opts[:format]
       when "text"
-        show_text entries
+        show_text entries, opts
       when "csv"
         show_csv entries
       when "status"
@@ -112,14 +133,15 @@ module Fume
       end      
     end
 
-    def show_text entries
+    def show_text entries, opts={}
       ctx_length = entries.values.map{|e| e[:context].length}.max
+      id_length  = opts[:ids] ? entries.keys.map(&:size).max : (Math.log10(entries.size).to_i + 3)
 
       last_day = nil
       day_dur  = 0
       total    = 0
       
-      entries.sort_by{|i, e| e[:start_time]}.each do |i, e|
+      entries.sort_by{|i, e| e[:start_time]}.each.with_index(1) do |(id, e), i|
         start = e[:start_time]
         stop  = e[:stop_time]
         
@@ -135,15 +157,18 @@ module Fume
         total += secs
         
         if next_day and not last_day.nil?
-          puts "    -> #{HighLine.color(format_secs(day_dur), :green)}"
+          puts "#{"->".rjust(id_length)} #{HighLine.color(format_secs(day_dur), :green)}"
           day_dur  = 0
         else
           day_dur += secs
         end
-          
+
+        # normally, we just enumerate our entries, but if asked we show the internal id
+        index = opts[:ids] ? id.to_s : "<#{i}>".rjust(id_length)
+        
         puts "%{id} %{context}  %{from} -(%{duration})-> %{till}" %
          ({
-           id: HighLine.color("%5d)" % i, :magenta),
+           id: HighLine.color(index, :magenta),
            context: HighLine.color("%-#{ctx_length}s" % e[:context], :yellow),
            from: "#{HighLine.color(start_day, next_day ? :white : :bright_black)} #{start_time}",
            till: stop.nil? ? "?" : "#{stop_time} #{HighLine.color(stop_day, same_day ? :bright_black : :white)}",
@@ -152,7 +177,7 @@ module Fume
 
         last_day = start.to_date
       end
-      puts "    -> %{day} / %{total}" %
+      puts "#{"->".rjust(id_length)} %{day} / %{total}" %
        ({
          day: HighLine.color(format_secs(day_dur), :green),
          total: HighLine.color(format_secs(total), :green)

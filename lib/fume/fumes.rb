@@ -210,8 +210,15 @@ module Fume
       save
     end
 
+    # generate unique id for next entry
     def new_id
-      (@entries.keys.max || 0 ) + 1
+      SecureRandom.uuid
+    end
+
+    # id of latest entry
+    def last_id
+      # hashs are ordered, so just return the latest entry
+      @entries.keys.last
     end
     
     def stop stop_time=nil

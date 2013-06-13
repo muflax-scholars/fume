@@ -3,6 +3,7 @@ require "beeminder"
 require "date"
 require "highline/import"
 require "muflax-chronic"
+require 'securerandom'
 require "set"
 require "socket"
 require "thread"
