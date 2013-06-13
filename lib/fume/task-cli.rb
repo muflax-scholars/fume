@@ -35,7 +35,7 @@ module Fume
           upload
         end
 
-        # show_contexts :urgent
+        show_contexts :urgent
       end
 
       add_command "list" do
