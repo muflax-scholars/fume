@@ -1,5 +1,7 @@
 fume aka future_me, a time tracking / goal suggesting thingie
 
+![screenshot](https://raw.github.com/muflax/fume/master/fume_screenshot.png)
+
 Features
 ========
 
