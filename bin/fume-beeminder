@@ -3,12 +3,8 @@
 # Simple script to get old fume data and send it to beeminder. Put it in a daily
 # cron job. Pay for dreeves' hookers.
 
-require "beeminder"
 require "muflax-chronic"
-require 'net/https'
-require "set"
 require "trollop"
-require "uri"
 
 # load library
 file = File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__
@@ -21,120 +17,47 @@ else
   require 'fume'
 end
 
-margin = "1 hour ago"
-
 # load configs
 opts = Trollop::options do
   banner "usage: fume-beeminder [opts]"
 
-  opt :force,   "force update"
+  opt :force,   "force update (ignores margin)"
   opt :debug,   "debug mode"
   opt :pretend, "pretend to send data"
+  opt :margin,  "only consider items at least that old", :type => :string, :default => "1 hour ago"
 end
 
-bee_file = File.join(Fume::Config["fume_dir"], "beeminder.yaml")
-bee_conf = YAML::load(File.open(bee_file))
-
 puts "loading fume data..." if opts[:debug]
-fumes = Fume::Fumes.new
-fumes.init
+bee = Fume::Bee.new
 
 puts "getting unreported entries..." if opts[:debug]
-entries = fumes.unreported_entries
-entries.select! {|id, e| e[:start_time] >= bee_conf["start"]}
-
-puts "found: #{entries.count}" if opts[:debug]
+margin  = opts[:force] ? "now" : opts[:margin]
+entries = bee.unreported_entries margin
 
 if entries.empty?
   puts "nothing to do..." if opts[:debug]
   exit
+else
+  puts "found #{entries.count} entries..." if opts[:debug]
 end
 
-contexts = Set.new(fumes.contexts.map(&:name))
+data = bee.build_data entries
 
-# select entries in a valid context and not too new
-to_report = entries.select do |id, e|
-  contexts.include?(e[:context]) and (e[:stop_time] <= fumes.parse_time(margin) or
-                                      opts[:force])
-end
-
-if to_report.empty?
+if data.empty?
   puts "nothing to update (yet)..." if opts[:debug]
   exit
 end
 
-# build data for all goals
-data = {}
-bee_conf["goals"].each do |goal|
-  # only use entries from certain contexts, if specified, or all otherwise
-  allowed_contexts = Set.new
-  if not goal["contexts"].nil?
-    allowed_contexts += [*goal["contexts"]].flatten
-  end
-  if not goal["groups"].nil?
-    groups = [*goal["groups"]].flatten
-    fumes.contexts.each do |ctx|
-      allowed_contexts << ctx.name if groups.include? ctx.group.name
-    end
-  end
-  allowed_contexts = contexts if allowed_contexts.empty?
-  puts "#{goal["name"]} allows: #{allowed_contexts.sort.join(", ")}" if opts[:debug]
-  puts "to report for #{goal["name"]}:" if opts[:debug]
-
-  valid = to_report.select {|id, e| allowed_contexts.include? e[:context]}
-  next if valid.empty?
-
-  # build data point; we assume only cumulative goals
-  date  = valid.map{|id, e| e[:start_time]}.max
-  score = "%0.2f" % 
-   case goal["type"]
-   when "time"
-     valid.reduce(0) do |s, (id, e)|
-       s + ((e[:stop_time] - e[:start_time] ) / (60.0*60.0))
-     end
-   when "boxes"
-     valid.size
-   when "total"
-     # FIXME respect contexts
-     fumes.durations[:all][date.to_date] / (60.0*60.0)
-   else
-     raise "unknown goal type"
-   end
-  valid.each do |_, e|
-    puts "  -> #{e[:context]}" if opts[:debug]
-  end
-  
-  used_contexts = valid.map{|id, e| e[:context]}.uniq
-  comment = "#{goal["name"]} update, context#{valid.size > 1 ? "s" : ""}: #{used_contexts.sort.join(", ")}"
-
-  body = {
-    date: date,
-    comment: comment,
-    value: score,
-  }
-  
-  data[goal["name"]] = body
-end
-
 # send data
-data.each do |goal, body|
-  if opts[:pretend]
-    puts "would send:"
+if opts[:pretend]
+  puts "would send:"
+  data.each do |goal, body|
     puts body
-  else
-    config = YAML.load File.open("#{Dir.home}/.beeminderrc")
-    bee = Beeminder::User.new config["token"]
-    g = bee.goal goal
-    dp = Beeminder::Datapoint.new("timestamp" => body[:date].strftime('%s'),
-                                  "value" => body[:value],
-                                  "comment" => body[:comment])
-    g.add dp
   end
+else
+  bee.send data
 end
 
 # save data
 puts "saving..." if opts[:debug]
-to_report.each do |id, e|
-  fumes.entries[id][:reported] = true unless opts[:pretend]
-end
-fumes.save unless opts[:pretend]
+bee.mark_entries_reported to_report unless opts[:pretend]
