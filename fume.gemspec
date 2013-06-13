@@ -6,7 +6,7 @@ Gem::Specification.new do |s|
   s.authors            = ["muflax", "beneills"]
   s.email              = ["mail@muflax.com"]
   s.homepage           = 'http://github.com/muflax/fume'
-  s.rdoc_options       = ['--charset =UTF-8']
+  s.rdoc_options       = ['--charset=UTF-8']
   s.extra_rdoc_files   = %w[README.md]
   s.files              = Dir.glob("**/*")
   s.executables        = s.files.grep(/^bin\//).map{|f| File.basename f}
