@@ -5,6 +5,7 @@ require "highline/import"
 require "muflax-chronic"
 require "set"
 require "socket"
+require "thread"
 require "yaml"
 
 # fume libs

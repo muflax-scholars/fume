@@ -9,7 +9,11 @@ module Fume
       # fume rules
       @fumes_file = File.join(Fume::Config["fume_dir"], "fumes")
 
+      # last modification to any file we know about
       @last_modified = last_mod_time
+
+      # avoid writes in same process
+      @thread_lock = Mutex.new
     end
 
     def last_mod_time
@@ -41,9 +45,18 @@ module Fume
       # load time database
       @entries = {}
       if File.exist? @fume_db
-        File.open(@fume_db) do |f|
-          entries = YAML.load(f) || {}
-          @entries.merge! entries
+        File.open(@fume_db) do |db|
+          # get a lock
+          db.flock(File::LOCK_EX)
+
+          @thread_lock.synchronize do
+            # read content
+            entries = YAML.load(db) || {}
+            @entries.merge! entries
+          end
+
+          # let go of lock
+          db.flock(File::LOCK_UN)
         end
       end
     end
@@ -89,39 +102,48 @@ module Fume
     
     # write entries back to files
     def save
-      modified = modified?
-      
-      # reload files if necessary
-      if modified
-        old_entries = @entries
-        
-        # reload to minimize chance of overwriting anything
-        load_files
+      # first, get a lock for this process
+      db = File.open(@fume_db, "r+")
+      lock = db.flock(File::LOCK_EX)
 
-        # add changes; additions are accepted, but conflicts have to be resolved manually
-        @entries.merge! old_entries do |id, old_e, new_e|
-          old_e.merge(new_e) do |attr, old_v, new_v|
-            if old_v != new_v
-              error_db = "fume_db_error_#{Time.now.strftime("%s")}.yaml"
-              File.open(File.join(Fume::Config["fume_dir"], error_db), "w") do |f|
-                YAML.dump(old_entries, f)
+      # now make sure this thread is also locked
+      @thread_lock.synchronize do 
+        
+        # then, check if any changes occurred and merge them if necessary
+        modified = modified?
+
+        if modified
+          old_entries = @entries
+          
+          # reload to minimize chance of overwriting anything
+          load_files
+
+          # add changes; additions are accepted, but conflicts have to be resolved manually
+          @entries.merge! old_entries do |id, old_e, new_e|
+            old_e.merge(new_e) do |attr, old_v, new_v|
+              if old_v != new_v
+                error_db = "fume_db_error_#{Time.now.strftime("%s")}.yaml"
+                File.open(File.join(Fume::Config["fume_dir"], error_db), "w") do |f|
+                  YAML.dump(old_entries, f)
+                end
+                raise "conflict for #{id}: #{attr} '#{old_v}' != '#{new_v}'"
+              else
+                new_v
               end
-              raise "conflict for #{id}: #{attr} '#{old_v}' != '#{new_v}'"
-            else
-              new_v
             end
           end
         end
-      end
 
-      # write entries to file
-      File.open(@fume_db, "w") do |f|
-        YAML.dump(@entries, f)
+        # write entries to file
+        YAML.dump(@entries, db)
       end
 
       # minimize the necessity of reloads
       @last_modified = File.ctime(@fume_db)
 
+      # let go of lock
+      db.flock(File::LOCK_UN)
+      
       # update caches again (always necessary)
       update_caches
     end
