@@ -9,8 +9,7 @@ module Fume
       
       @last_shown_contexts = []
       @last_modified       = Time.new(0)
-
-      @upload_state = :none
+      @upload_state        = :none
 
       @commands = {}
       init_commands
@@ -31,14 +30,12 @@ module Fume
           # This error won't be usually visible, due to `clear` call
           # Doesn't really matter, since stderr gets outputted
           #   so it will be obvious if the external script fails
-          print "Upload already in progress!"
+          puts "Upload already in progress!"
         else
-          thr = Thread.new {
-            upload_synchronously
-          }
+          upload
         end
 
-        show_contexts :urgent
+        # show_contexts :urgent
       end
 
       add_command "list" do
@@ -458,10 +455,31 @@ module Fume
       show_contexts :urgent
     end
 
-    def upload_synchronously
+    def upload
       @upload_state = :working
-      system "fume-beeminder -f"
-      @upload_state = :completed
+      Thread.new do
+        send_to_beeminder
+        @upload_state = :completed
+      end
+    end
+
+    def send_to_beeminder
+      # establishing connection if it doesn't already exist
+      @bee       ||= Fume::Bee.new
+      @bee.fumes ||= @fumes
+
+      # get data
+      entries = @bee.unreported_entries
+      return if entries.empty?
+      
+      data = @bee.build_data entries
+      return if data.empty?
+
+      # send data
+      @bee.send data
+
+      # save
+      @bee.mark_entries_reported entries
     end
   end
 end

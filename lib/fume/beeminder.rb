@@ -7,7 +7,7 @@
 
 module Fume
   class Bee
-    attr_reader :fumes
+    attr_accessor :fumes
 
     def initialize token=nil
       # load config
@@ -29,7 +29,9 @@ module Fume
       raise "missing token" if token.nil? or token.empty?
       
       @bee = Beeminder::User.new token
+    end
 
+    def init
       # load fume data
       @fumes = Fume::Fumes.new
       @fumes.init
@@ -38,8 +40,13 @@ module Fume
     def unreported_entries margin="now"
       margin = @fumes.parse_time(margin)
 
-      entries = @fumes.unreported_entries.select do |id, e|
-        e[:start_time] >= @opts["start"] and e[:stop_time] <= margin
+      contexts = Set.new(@fumes.contexts.select{|c| c.report?}.map(&:name))
+      entries = @fumes.entries.select do |id, e|
+        not e[:reported] and
+        not e[:stop_time].nil? and
+        contexts.include? e[:context] and
+        e[:start_time] >= @opts["start"] and
+        e[:stop_time] <= margin
       end
 
       entries

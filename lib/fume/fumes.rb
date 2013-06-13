@@ -159,16 +159,6 @@ module Fume
       @entries.select {|id, e| e[:start_day] >= date}
     end
 
-    def unreported_entries
-      contexts = Set.new(@contexts.select{|c| c.report?}.map(&:name))
-      
-      @entries.select do |id, e|
-        not e[:reported] and
-        not e[:stop_time].nil? and
-        contexts.include? e[:context]
-      end
-    end
-
     def global_weight
       contexts.reduce(0) {|sum, ctx| sum + ctx.weight}
     end

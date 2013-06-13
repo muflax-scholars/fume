@@ -29,6 +29,7 @@ end
 
 puts "loading fume data..." if opts[:debug]
 bee = Fume::Bee.new
+bee.init
 
 puts "getting unreported entries..." if opts[:debug]
 margin  = opts[:force] ? "now" : opts[:margin]
@@ -60,4 +61,4 @@ end
 
 # save data
 puts "saving..." if opts[:debug]
-bee.mark_entries_reported to_report unless opts[:pretend]
+bee.mark_entries_reported entries unless opts[:pretend]
