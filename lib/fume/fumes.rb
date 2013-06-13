@@ -104,7 +104,7 @@ module Fume
     def save
       # first, get a lock for this process
       db = File.open(@fume_db, "r+")
-      lock = db.flock(File::LOCK_EX)
+      db.flock(File::LOCK_EX)
 
       # now make sure this thread is also locked
       @thread_lock.synchronize do 
