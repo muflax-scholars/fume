@@ -16,11 +16,15 @@ end
 commands = %w{display edit in out now}
 
 global_opts = Trollop::options do
-  banner "ti (#{commands.sort.join("|")}) [opts]"
+  banner"ti (#{commands.sort.join("|")}) [opts]"
   opt :config, "Path to config."
   stop_on_unknown
 end
 
+if ARGV.empty?
+  Trollop::die "no command given"
+end
+  
 cmd  = ARGV.shift
 cmds = commands.select{|c| c.start_with? cmd}
 
