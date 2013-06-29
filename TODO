@@ -5,3 +5,4 @@
 - daemon mode for status line?
 - send "0" days for "total" Beeminder goals
 - get Beeminder's data and do a sanity check
+- sanity checks, probably by turning entry hash-kludges into proper Entry class (again)
