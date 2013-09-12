@@ -1,10 +1,11 @@
 Gem::Specification.new do |s|
   s.name               = 'future_me'
-  s.version            = "0.16.1"
+  s.version            = "0.16.2"
   s.summary            = 'automated task suggester'
   s.description        = 'automated task suggester'
   s.authors            = ["muflax", "beneills"]
   s.email              = ["mail@muflax.com"]
+  s.license            = "GPL-2"
   s.homepage           = 'http://github.com/muflax/fume'
   s.rdoc_options       = ['--charset=UTF-8']
   s.extra_rdoc_files   = %w[README.md]
