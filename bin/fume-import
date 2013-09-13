@@ -1,0 +1,190 @@
+#!/usr/bin/env ruby
+#
+# Ben Eills, 2013
+#
+
+require "sequel"
+require "trollop"
+require "yaml"
+
+# load fume library
+file = File.symlink?(__FILE__) ? File.readlink(__FILE__) : __FILE__
+lib = File.join File.dirname(file), "/../lib/fume"
+
+if File.exists? lib
+  # using local version
+  require lib
+else
+  require 'fume'
+end
+
+
+class Fume::Fumes
+  def context_by_name(name, case_insensitive=false)
+    eq = lambda { |a,b|
+      case_insensitive ?
+      a.downcase == b.downcase :
+      a == b
+    }
+    contexts.select { |c| eq.call(name, c.name) }.first
+  end
+
+  #
+  # e.g. data = {'myprojectname' => [Range.new(a, b), ...], ...}
+  #   where a, b are integer seconds from Epoch
+  #
+  def attempt_mass_update(data)
+    data.map do |project_name, times|
+      # we assume that there is a simple correspondence
+      #   between both names
+      context = context_by_name(project_name, true)
+      if context
+        times.map do |time|
+          puts "Add: #{context}, #{Time.at(time.begin)}, #{Time.at(time.end)}"
+          start context, Time.at(time.begin)
+          stop Time.at(time.end)
+        end
+      end
+    end
+  end
+end
+
+
+class Imports < Hash
+  def initialize
+    @filename = File.join(Fume::Config["fume_dir"], "fume_import.yaml")
+    update(YAML::load(File.open(@filename))) if File.exists?(@filename)
+    super(Time.new(0))
+  end
+
+  def save
+    File.open(@filename, "w") do |f|
+      f.write(Hash[self].to_yaml) # write a Hash, not an Import
+    end
+  end
+end
+
+#   def []
+#       default  = {
+#                   :start => DateTime.new(0),
+#                   :goals => [],
+#                  }
+#       @opts = default.merge(opts)
+
+#     File.open(@filename, "rw") do |f|
+#       imports = {}
+#       f.flock(File::LOCK_EX)
+#       fume.thread_lock.synchronize do
+#         imports = YAML.load(f) || {} # { 'mytype' => lasttime, ... }
+#       end
+#       f.flock(File::LOCK_UN)
+#     end
+#     imports[type]
+
+#   end
+
+#   # Time of last update, or nil
+#   #
+#   def [](type)
+#   end
+
+#   # update Time of last update
+#   #
+#   def []=(type, time)
+#     File.open(@filename, "rw") do |f|
+#       f.flock(File::LOCK_EX)
+#       fume.thread_lock.synchronize do
+#         imports = YAML.load(f) || {} # { 'mytype' => lasttime, ... }
+#         imports[type] = time
+#         f.write(imports.to_yaml)
+#       end
+#       f.flock(File::LOCK_UN)
+#     end
+#     imports[type]
+#   end
+
+
+#     lasttime = imports[type] || Time.new(0)
+
+# end
+
+def main
+  opts = Trollop::options do
+    banner "import into fume db"
+    opt :type, "Type of database from which to import.", :default => 'jiffy'
+    opt :pretend, "Just pretend to add data.", :type => :bool, :default => false
+  end
+  
+  Trollop::die "Please specify exactly one input file" unless ARGV.length == 1
+  filename = ARGV.shift
+  Trollop::die "Input file #{filename} does not exist" unless File.exists?(filename)
+  type = opts.type.to_sym
+  Trollop::die "Invalid DB type: #{type}" unless (Types.methods - Object.methods).include?(type)
+
+  # Determine from when we need to check for times
+  imports = Imports.new
+  lasttime = imports[type]
+
+  # At this point, we pass execution to DB-specific code
+  #  which should return a data hash
+  update = Types.method(type).call(filename, lasttime)
+  data = update[:data]
+  time = update[:time]
+
+  # Update the type's time (from file mtime)
+  imports[type] = time
+  imports.save unless opts.pretend
+
+  # Finally, we add data to Fume
+  modified = data.values.map {|t| !t.empty? }.any?
+  if modified
+    print "Found data to add.  Adding..."
+    if opts.pretend
+      puts "\n#{data}\n"
+    else
+      fume = Fume::Fumes.new
+      fume.init
+      fume.attempt_mass_update(data)
+      fume.save
+    end
+    puts "done."
+  else
+    puts "Found no data to add."
+  end
+end
+
+
+class Types
+
+  # Jiffy for Android
+  # https://play.google.com/store/apps/details?id=com.nordicusability.jiffy&hl=en_GB
+  #
+  # This is the best Android app I found (backs up to Dropbox/SQLite), however it lacks auto sync
+  #   to Dropbox.  Just press "Backup" occasionally, and crontab something like:
+  #   cd ~/Dropbox/Apps/JiffyBackup && fume-import $(ls -1t --quoting-style=shell | head -n 1)
+  #
+  def self.jiffy(filename, lasttime)
+    time = File.mtime(filename)
+    
+    # connect to an in-memory database
+    db = Sequel.sqlite filename
+
+    projects = Hash[db[:jiffy_projects].map do |p|
+                      [p[:projectname], p[:projectid]]
+                    end]
+    data = Hash[projects.map do |name, id|
+           times = db[:jiffy_times]
+                    .where(:projectid => id)
+                    .filter { starttime > lasttime.to_i*1000 }
+                    .order(:starttime)
+                    .map do |t|
+             # milliseconds since epoch -> seconds since epoch
+             Range.new(t[:starttime]/1000, t[:stoptime]/1000)
+           end
+           [name, times]
+         end]
+    {:data => data, :time => time}
+  end
+end
+
+main
