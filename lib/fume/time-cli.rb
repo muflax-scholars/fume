@@ -167,21 +167,21 @@ module Fume
         index = opts[:ids] ? id.to_s : "<#{i}>".rjust(id_length)
         
         puts "%{id} %{context}  %{from} -(%{duration})-> %{till}" %
-         ({
-           id: HighLine.color(index, :magenta),
-           context: HighLine.color("%-#{ctx_length}s" % e[:context], :yellow),
-           from: "#{HighLine.color(start_day, next_day ? :white : :bright_black)} #{start_time}",
-           till: stop.nil? ? "?" : "#{stop_time} #{HighLine.color(stop_day, same_day ? :bright_black : :white)}",
-           duration: HighLine.color(format_secs(secs), :green),
-          })
+          ({
+            id: HighLine.color(index, :magenta),
+            context: HighLine.color("%-#{ctx_length}s" % e[:context], :yellow),
+            from: "#{HighLine.color(start_day, next_day ? :white : :bright_black)} #{start_time}",
+            till: stop.nil? ? "?" : "#{stop_time} #{HighLine.color(stop_day, same_day ? :bright_black : :white)}",
+            duration: HighLine.color(format_secs(secs), :green),
+           })
 
         last_day = start.to_date
       end
       puts "#{"->".rjust(id_length)} %{day} / %{total}" %
-       ({
-         day: HighLine.color(format_secs(day_dur), :green),
-         total: HighLine.color(format_secs(total), :green)
-        })
+        ({
+          day: HighLine.color(format_secs(day_dur), :green),
+          total: HighLine.color(format_secs(total), :green)
+         })
     end
 
     def format_time time

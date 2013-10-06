@@ -29,7 +29,6 @@ Requirements
 - a not too stupid shell
 - Ruby 1.9
 - highline >= 1.6.5 - [https://github.com/JEG2/highline]
-- (optional) muflax-chronic - https://github.com/muflax/chronic]
 
 Installation
 ============
@@ -41,7 +40,7 @@ Either as a gem:
 Or manually:
 
     # first install the requirements
-    (sudo) gem install awesome_print highline muflax-chronic
+    (sudo) gem install awesome_print highline chronic
 
     # then fume itself
     git clone https://github.com/muflax/fume.git

@@ -3,7 +3,7 @@
 # Simple script to get old fume data and send it to beeminder. Put it in a daily
 # cron job. Pay for dreeves' hookers.
 
-require "muflax-chronic"
+require "chronic"
 require "trollop"
 
 # load library

@@ -142,7 +142,7 @@ module Fume
           
           # remember order
           @last_shown_contexts << ctx
-
+          
           puts "%{id} %{context} %{boxes} %{weight} %{performance}" %
            ({
              id: HighLine.color("<%02d>" % (i), :magenta),
@@ -161,16 +161,16 @@ module Fume
       # average of all columns
       performance = average_for :all
       puts "avg: #{" "*(ctx_length+1+10)} %{performance}" %
-       ({
-         performance: HighLine.color("[#{performance}]", :white),
-        })
-
+        ({
+          performance: HighLine.color("[#{performance}]", :white),
+         })
+      
       # best day in colums
       performance = best_for :all
       puts "max: #{" "*(ctx_length+1+10)} %{performance}" %
-       ({
-         performance: HighLine.color("[#{performance}]", :white),
-        })
+        ({
+          performance: HighLine.color("[#{performance}]", :white),
+         })
 
       # sum of all colums
       performance  = performance_for :all

@@ -2,7 +2,7 @@ require "awesome_print"
 require "beeminder"
 require "date"
 require "highline/import"
-require "muflax-chronic"
+require "chronic"
 require 'securerandom'
 require "set"
 require "socket"
