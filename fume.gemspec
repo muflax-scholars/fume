@@ -14,8 +14,7 @@ Gem::Specification.new do |s|
   s.default_executable = "fume"
   
   s.add_dependency("awesome_print")
-  s.add_dependency("beeminder", "~> 0.2")
   s.add_dependency("trollop",   "~> 2.0")
   s.add_dependency("highline",  "~> 1.6")
-  s.add_dependency("chronic",   "~> 0.10")
+  s.add_dependency("chronic",   "~> 0.9")
 end
