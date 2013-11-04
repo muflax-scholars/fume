@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 module Fume
   module Config
     extend self
@@ -9,10 +10,12 @@ module Fume
                    else
                      File.dirname(__FILE__)
                    end + "/../.."
-      
+
       {
-        "fume_dir"  => File.join(Dir.home, "fume"),
-        "signal"    => File.join(signal_dir, "signal.wav"),
+        "fume_dir"     => File.join(Dir.home,   "fume"),
+        "signal"       => File.join(signal_dir, "signal.wav"),
+        "player"       => "mplayer -really-quiet",
+        "notification" => "gxmessage -timeout 5 'やった！(*＾０＾*)'"
       }
     end
 

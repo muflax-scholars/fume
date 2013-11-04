@@ -11,7 +11,7 @@ Features
 Idea
 ====
 
-Quoting myself: 
+Quoting myself:
 > Assuming you have a good idea what tasks you want to do in total, just automate it. Try to delegate away as many day-to-day decisions as you can.
 >
 > I extended my todo scripts for that exact purpose. I track how much time I spend on each task and how much time I should spend, based on a relative weight. (As in, this task is 2x as important as this and so on. I estimate my weights by starting with 200 usable hours per month and then distribute them among all tasks, using the assigned hours as a weight.) The script then checks if "time spent on task this week" is close to the relative time it should receive, according to the total time I've worked so far, and sorts all tasks based on their deficit. I then just do whatever project is furthest behind for as long as I can concentrate, let the script pick the next one and so on.
@@ -25,7 +25,8 @@ That's how it used to work, anyway. If I ever find the time, I might explain it 
 Requirements
 ============
 
-- mplayer
+- mplayer (or some other player)
+- gxmessage (or some other notification thingie)
 - a not too stupid shell
 - Ruby 1.9
 - highline >= 1.6.5 - [https://github.com/JEG2/highline]
@@ -46,20 +47,20 @@ Or manually:
     git clone https://github.com/muflax/fume.git
     cd fume
     (sudo) rake install
-    
+
     # and finally get an example fumes file
     cd ..
     git clone https://gist.github.com/e2e6c6ef701f48d6270e.git fumes
     cp fumes/fumes ~/fume/
 
     # run fume
-    fume 
+    fume
 
 You can also use Beeminder integration by setting up [the beeminder gem](https://github.com/beeminder/beeminder-gem) and adding a `beeminder.yaml`, like so:
 
     git clone https://gist.github.com/muflax/5269db2ca5f80957746b fume-beeminder
     cp fume-beeminder/beeminder.yaml ~/fume
-    
+
 TODO
 ====
 

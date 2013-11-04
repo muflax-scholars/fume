@@ -2,11 +2,11 @@
 module Fume
   class TaskCLI
     attr_reader :fumes
-    
+
     def initialize
       @fumes       = Fume::Fumes.new
       @signal_file = Fume::Config["signal"]
-      
+
       @last_shown_contexts = []
       @last_modified       = Time.new(0)
       @upload_state        = :none
@@ -71,7 +71,7 @@ module Fume
       }
       @commands[name.gsub(/\((\w)\)/, '\1').gsub(/ /, "_").to_sym] = cmd
     end
-    
+
     def reload
       @fumes.init if files_updated?
     end
@@ -89,7 +89,7 @@ module Fume
         return false
       end
     end
-    
+
     def show_contexts filter=:all
       system "clear"
       show_todo filter
@@ -102,15 +102,15 @@ module Fume
                      HighLine.color("[upload in progress]", :yellow)
                    when :completed
                      # reset state now that we've shown it
-                     @upload_state = :none 
+                     @upload_state = :none
                      HighLine.color("[upload complete]", :green)
                    end
-      
+
       puts "  -> Incoming transmission! <-  #{upload_msg}"
 
       # grab new data
       reload
-      
+
       # find all contexts and apply filter
       contexts =
        if filter == :urgent
@@ -139,10 +139,10 @@ module Fume
           i          += 1
           urgent      = ctx.weight > 0
           performance = performance_for ctx
-          
+
           # remember order
           @last_shown_contexts << ctx
-          
+
           puts "%{id} %{context} %{boxes} %{weight} %{performance}" %
            ({
              id: HighLine.color("<%02d>" % (i), :magenta),
@@ -164,7 +164,7 @@ module Fume
         ({
           performance: HighLine.color("[#{performance}]", :white),
          })
-      
+
       # best day in colums
       performance = best_for :all
       puts "max: #{" "*(ctx_length+1+10)} %{performance}" %
@@ -227,7 +227,7 @@ module Fume
         durations[time]   = HighLine.color("%6.1fh"  % (duration / 3600.0), dur_color)
         percentiles[time] = HighLine.color("%3.0f%%" % (percentile * 100),  per_color)
       end
-      
+
       performance = @fumes.times.map{|t| "#{durations[t]}#{percentiles[t]}"}.join ' | '
 
       performance
@@ -239,14 +239,14 @@ module Fume
         cutoff_day = interval == Date.today ? (Date.today - 1) : interval
         dur_before = @fumes.durations_within(context, cutoff_day, Date.today)
         dur_today  = @fumes.durations[context][Date.today]
-        
+
         # average worked hours in this interval
         days           = (Date.today - cutoff_day).to_i
         average        = dur_before.reduce(0.0, :+).to_f / days
         avg_color      = dur_today > average ? :white : :bright_black
         averages[time] = HighLine.color("%6.1fh" % (average / 3600.0), avg_color)
       end
-      
+
       performance = @fumes.times.map{|t| "#{averages[t]}#{" " * 4}"}.join ' | '
 
       performance
@@ -258,24 +258,24 @@ module Fume
         cutoff_day = interval == Date.today ? (Date.today - 1) : interval
         dur_before = @fumes.durations_within(context, cutoff_day, Date.today)
         dur_today  = @fumes.durations[context][Date.today]
-        
+
         # average worked hours in this interval
         best         = dur_before.max || 0
         best_color   = dur_today > best ? :white : :bright_black
         bests[time] = HighLine.color("%6.1fh" % (best / 3600.0), best_color)
       end
-      
+
       performance = @fumes.times.map{|t| "#{bests[t]}#{" " * 4}"}.join ' | '
 
       performance
     end
-    
+
     def length_of_longest_in(list)
-      list.max do |a, b| 
+      list.max do |a, b|
         a.to_s.length <=> b.to_s.length
       end.to_s.length
     end
-    
+
     def run
       system "clear"
       puts "Starting time machine."
@@ -307,7 +307,7 @@ module Fume
       command = commands.find {|cmd| cmd[:keyword] == input}
       instance_eval(&command[:block])
     end
-    
+
     def question_me
       prompt = [
                 :choose,
@@ -338,7 +338,7 @@ module Fume
       if @last_shown_contexts.empty? # have never shown anything, so do it now
         show_contexts :urgent
       end
-      
+
       id = ask("What item do you want? ", Integer) do |q|
         q.in = 1..@last_shown_contexts.size
         q.limit = @last_shown_contexts.size.to_s.size
@@ -352,7 +352,7 @@ module Fume
     def choose_timebox_size ctx
       # offer various durations
       boxes = [1, 5, 10, 20, 30, 60]
-      
+
       box_desc  = boxes.map.with_index{|b, i| "(#{i+1}) #{b}min"}
       misc_desc = ["custom", "open"]
 
@@ -375,10 +375,10 @@ module Fume
                  end
 
       timebox = duration > 0 ? Fume::Timebox.new(duration) : nil
-      
+
       timebox
     end
-    
+
     # Insert a previous timebox or change the starting time of a running one.
     def orwellize
       if @fumes.running?
@@ -396,7 +396,7 @@ module Fume
         if @last_shown_contexts.empty? # have never shown anything, so do it now
           show_contexts :all
         end
-        
+
         ctx = choose_context
         start_time = @fumes.parse_time(ask("When did you start? ", String) do |q|
                                          q.readline = true
@@ -422,7 +422,7 @@ module Fume
         q.readline = true
       end
     end
-      
+
     def work_on ctx
       # first check out
       @fumes.stop if @fumes.running?
@@ -441,10 +441,10 @@ module Fume
         puts "Time machine is recharging..."
         puts "River of time will be fished in #{timebox.duration} minutes..."
 
-        timebox.start do 
+        timebox.start do
           system "clear"
-          system "mplayer -really-quiet #{@signal_file} &"
-          system "gxmessage -timeout 5 'やった！(*＾０＾*)' &"
+          system "#{Fume::Config["player"]} #{@signal_file} &"
+          system "#{Fume::Config["notification"]} &"
         end
       end
 
@@ -472,7 +472,7 @@ module Fume
       # get data
       entries = @bee.unreported_entries
       return if entries.empty?
-      
+
       data = @bee.build_data entries
       return if data.empty?
 

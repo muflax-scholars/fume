@@ -1,9 +1,9 @@
 Gem::Specification.new do |s|
   s.name               = 'future_me'
-  s.version            = "0.16.4"
+  s.version            = "0.16.5"
   s.summary            = 'automated task suggester'
   s.description        = 'automated task suggester'
-  s.authors            = ["muflax", "beneills"]
+  s.authors            = ["muflax", "beneills", "rejuvyesh"]
   s.email              = ["mail@muflax.com"]
   s.license            = "GPL-2"
   s.homepage           = 'http://github.com/muflax/fume'
@@ -12,7 +12,7 @@ Gem::Specification.new do |s|
   s.files              = Dir.glob("**/*")
   s.executables        = s.files.grep(/^bin\//).map{|f| File.basename f}
   s.default_executable = "fume"
-  
+
   s.add_dependency("awesome_print")
   s.add_dependency("beeminder", "~> 0.2")
   s.add_dependency("trollop",   "~> 2.0")
