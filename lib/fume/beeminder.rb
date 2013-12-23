@@ -21,13 +21,13 @@ module Fume
 
       # log into beeminder
       bee_config = "#{Dir.home}/.beeminderrc"
-      
+
       if token.nil? and File.exists? bee_config
         config = YAML.load File.open(bee_config)
         token  = config["token"]
       end
       raise "missing token" if token.nil? or token.empty?
-      
+
       @bee = Beeminder::User.new token
     end
 
@@ -84,7 +84,7 @@ module Fume
 
         # build data point; we assume all goals are cumulative and just send our diff
         date  = valid.map{|id, e| e[:start_time]}.max
-        score = "%0.2f" % 
+        score = "%0.2f" %
          case goal["type"]
          when "time"
            valid.reduce(0) do |s, (_, e)|
@@ -98,20 +98,20 @@ module Fume
          else
            raise "unknown goal type"
          end
-        
+
         used_contexts = valid.map{|_, e| e[:context]}.uniq
         comment       = "%{name} update, context#{valid.size > 1 ? "s" : ""}: %{contexts}" %
          {
           name:     goal["name"],
           contexts: used_contexts.sort.join(", "),
          }
-       
+
         body = {
                 date:    date,
                 comment: comment,
                 value:   score,
                }
-        
+
         data[goal["name"]] = body
       end
 
@@ -132,8 +132,8 @@ module Fume
     def mark_entries_reported entries
       entries.each do |id, e|
         @fumes.entries[id][:reported] = true
-        @fumes.save
       end
+      @fumes.save
     end
   end
 end
