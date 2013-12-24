@@ -82,22 +82,34 @@ module Fume
         valid = entries.select {|id, e| allowed_contexts.include? e[:context]}
         next if valid.empty?
 
+        # unit of measurement
+        unit = case goal["unit"]
+               when "hour", "hours"
+                 1
+               when "minute", "minutes"
+                 60
+               when Numeric
+                 goal["unit"]
+               else
+                 1
+               end
+
         # build data point; we assume all goals are cumulative and just send our diff
         date  = valid.map{|id, e| e[:start_time]}.max
-        score = "%0.2f" %
-         case goal["type"]
-         when "time"
-           valid.reduce(0) do |s, (_, e)|
-             s + ((e[:stop_time] - e[:start_time] ) / (60.0*60.0))
-           end
-         when "boxes"
-           valid.size
-         when "total"
-           # FIXME respect contexts
-           fumes.durations[:all][date.to_date] / (60.0*60.0)
-         else
-           raise "unknown goal type"
-         end
+        score = case goal["type"]
+                when "time"
+                  valid.reduce(0) do |s, (_, e)|
+                    s + ((e[:stop_time] - e[:start_time] ) / (60.0*60.0))
+                  end
+                when "boxes"
+                  valid.size
+                when "total"
+                  # FIXME respect contexts
+                  fumes.durations[:all][date.to_date] / (60.0*60.0)
+                else
+                  raise "unknown goal type"
+                end
+        value = "%0.2f" % (score * unit)
 
         used_contexts = valid.map{|_, e| e[:context]}.uniq
         comment       = "%{name} update, context#{valid.size > 1 ? "s" : ""}: %{contexts}" %
@@ -109,7 +121,7 @@ module Fume
         body = {
                 date:    date,
                 comment: comment,
-                value:   score,
+                value:   value,
                }
 
         data[goal["name"]] = body
