@@ -5,6 +5,7 @@ module Fume
     def initialize
       @fumes = Fume::Fumes.new
       @fumes.init
+      @taskbar = Fume::Config['bar']
     end
     
     def edit opts={}
@@ -197,15 +198,24 @@ module Fume
     end
 
     def show_status entries
-      dzen_number = 100
-
+      if @taskbar.eql? "dzen"
+        dzen_number      = 100
+        runningbraceopen = "B ^fg(#00ff00)"
+        idlebraceopen    = "^fg(#ff0000)"
+        braceclose       = "^fg()\n"
+      elsif @taskbar.eql? "xmobar"
+        dzen_number      = nil
+        runningbraceopen = "<fc=#87FF00>"
+        idlebraceopen    = "<fc=#D7005F>"
+        braceclose       = "</fc>"
+      end
       if @fumes.running?
         running = @fumes.running_contexts.join(" | ")
-        puts "#{dzen_number} B ^fg(#00ff00)#{running}^fg()"
+        print "#{dzen_number} #{runningbraceopen}#{running}#{braceclose}"
       else
-        puts "#{dzen_number} ^fg(#ff0000)unbound^fg()"
+        print "#{dzen_number} #{idlebraceopen}unbound#{braceclose}"
       end
-      dzen_number += 1
+      dzen_number += 1 unless dzen_number.nil?
 
       # print total time worked today
       total = entries.reduce(0) do |s, (_, e)|
@@ -213,7 +223,7 @@ module Fume
       end.to_i
       
       puts "#{dzen_number} T #{format_secs(total)}"
-      dzen_number += 1
+      dzen_number += 1 unless dzen_number.nil?
     end
   end
 end

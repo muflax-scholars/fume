@@ -15,7 +15,8 @@ module Fume
         "fume_dir"     => File.join(Dir.home,   "fume"),
         "signal"       => File.join(signal_dir, "signal.wav"),
         "player"       => "mplayer -really-quiet",
-        "notification" => "gxmessage -timeout 5 'やった！(*＾０＾*)'"
+        "notification" => "gxmessage -timeout 5 'やった！(*＾０＾*)'",
+        "bar"          => "dzen"
       }
     end
 
